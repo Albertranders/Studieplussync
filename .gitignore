@@ -1,0 +1,7 @@
+.env
+credentials.json
+token.json
+state.json
+__pycache__/
+.pytest_cache/
+.venv/
