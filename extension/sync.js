@@ -74,3 +74,7 @@ export function isSafeSchedule(lessons) {
   return Array.isArray(lessons) && lessons.length > 0 &&
     lessons.every(l => l.date && l.start && l.end && l.subject);
 }
+
+export function isSuspiciousDrop(existingCount, newCount) {
+  return existingCount >= 4 && newCount < Math.ceil(existingCount * 0.5);
+}

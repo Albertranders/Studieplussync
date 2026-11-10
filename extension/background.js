@@ -1,4 +1,4 @@
-import { buildPlan, contentHash, eventBody, isSafeSchedule, MANAGED_HASH, MANAGED_KEY, TIME_ZONE } from "./sync.js";
+import { buildPlan, contentHash, eventBody, isSafeSchedule, isSuspiciousDrop, MANAGED_HASH, MANAGED_KEY, TIME_ZONE } from "./sync.js";
 
 const CALENDAR_NAME = "Studie+ skema";
 const ALARM_NAME = "studiesync-auto-sync";
@@ -122,6 +122,9 @@ async function syncNow(interactive = false) {
     const end = new Date(`${dates[dates.length - 1]}T00:00:00`);
     end.setDate(end.getDate() + 1);
     const existing = await getManagedEvents(token, calendarId, start, end);
+    if (isSuspiciousDrop(existing.length, lessons.length)) {
+      throw new Error("Studie+ viste markant færre lektioner end kalenderen for de samme datoer. For at beskytte dine kalenderdata blev synkroniseringen stoppet.");
+    }
     const plan = buildPlan(lessons, existing);
 
     await applyPlan(token, calendarId, plan);
