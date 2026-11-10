@@ -3,12 +3,13 @@ const detail = document.getElementById("detail");
 const dot = document.getElementById("dot");
 const syncButton = document.getElementById("sync");
 const connectButton = document.getElementById("connect");
+const testButton = document.getElementById("test");
 const updated = document.getElementById("updated");
 
 function setStatus(status) {
   if (!status) return;
   state.textContent = status.message || "Klar til synkronisering";
-  detail.textContent = status.ok ? "Google Kalender er opdateret." : "Kontrollér Studie+ og prøv igen.";
+  detail.textContent = status.detail || (status.ok ? "Forbindelsen fungerer." : "Kontrollér Studie+ og prøv igen.");
   dot.className = "dot " + (status.ok ? "good" : "bad");
 }
 function message(type) {
@@ -19,6 +20,13 @@ async function load() {
   if (result?.lastStatus) setStatus(result.lastStatus);
   if (result?.lastUpdated) updated.textContent = "Sidst kørt: " + new Date(result.lastUpdated).toLocaleString("da-DK");
 }
+testButton.addEventListener("click", async () => {
+  testButton.disabled = true;
+  setStatus({ ok: false, message: "Tester Studie+…", detail: "Kontrollerer den aktive session og skemaforbindelsen." });
+  const result = await message("STUDIESYNC_TEST_CONNECTION");
+  testButton.disabled = false;
+  setStatus(result);
+});
 connectButton.addEventListener("click", async () => {
   connectButton.disabled = true;
   const result = await message("STUDIESYNC_CONNECT");
