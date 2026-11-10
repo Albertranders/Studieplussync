@@ -42,11 +42,20 @@ async function googleRequest(token, path, options = {}) {
 }
 async function ensureCalendar(token) {
   const { calendarId } = await storageGet(["calendarId"]);
-  if (calendarId) return calendarId;
+  if (calendarId) {
+    try {
+      await googleRequest(token, `/calendars/${encodeURIComponent(calendarId)}`);
+      return calendarId;
+    } catch (error) {
+      if (!String(error?.message || error).startsWith("Google Kalender (404):")) throw error;
+      await chrome.storage.local.remove("calendarId");
+    }
+  }
   const created = await googleRequest(token, "/calendars", {
     method: "POST",
     body: JSON.stringify({ summary: CALENDAR_NAME, timeZone: TIME_ZONE })
   });
+  if (!created?.id) throw new Error("Google Kalender oprettede ikke en kalender med et gyldigt id.");
   await storageSet({ calendarId: created.id });
   return created.id;
 }
