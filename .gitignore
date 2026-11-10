@@ -5,3 +5,5 @@ state.json
 __pycache__/
 .pytest_cache/
 .venv/
+*.zip
+node_modules/
