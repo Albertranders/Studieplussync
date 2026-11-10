@@ -191,7 +191,9 @@
     const root=readObject();
     if(!Array.isArray(root))throw new Error("GWT-dataene indeholdt ikke en gyldig lektionsliste.");
     return root.map(lesson=>{
-      if(!(lesson.start instanceof Date)||!(lesson.end instanceof Date)||!lesson.subject)throw new Error("En lektion mangler dato, tid eller fag. Synkronisering er stoppet.");
+      // Bookinger (fx "Anden aktivitet", "Elevråd") har intet fag, kun en aktivitetstype.
+      if(!lesson.subject)lesson.subject=lesson.className||(lesson.note&&lesson.note.split("\n")[0].trim())||"Booking";
+      if(!(lesson.start instanceof Date)||!(lesson.end instanceof Date))throw new Error("En lektion mangler dato eller tid. Synkronisering er stoppet.");
       const date=[lesson.start.getFullYear(),String(lesson.start.getMonth()+1).padStart(2,"0"),String(lesson.start.getDate()).padStart(2,"0")].join("-");
       const start=String(lesson.start.getHours()).padStart(2,"0")+":"+String(lesson.start.getMinutes()).padStart(2,"0");
       const end=String(lesson.end.getHours()).padStart(2,"0")+":"+String(lesson.end.getMinutes()).padStart(2,"0");
