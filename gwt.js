@@ -43,7 +43,7 @@
   }
 
   function decodePayload(text) {
-    let source = text.replace(/^\\/\\/OK/, "").trim();
+    let source = text.replace(/^\/\/OK/, "").trim();
     const chunks = [];
     while (source.length) {
       const start = source.indexOf("[");
@@ -56,7 +56,7 @@
         const ch = source[i];
         if (inString) {
           if (escaped) escaped = false;
-          else if (ch === "\\\\") escaped = true;
+          else if (ch === "\\") escaped = true;
           else if (ch === '"') inString = false;
           continue;
         }
