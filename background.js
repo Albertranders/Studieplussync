@@ -13,7 +13,7 @@ function sendStatus(status) {
   return storageSet({ lastStatus: status, lastUpdated: new Date().toISOString() });
 }
 function calendarUrl(path) {
-  return \`https://www.googleapis.com/calendar/v3\${path}\`;
+  return `https://www.googleapis.com/calendar/v3${path}`;
 }
 async function googleToken(interactive) {
   return new Promise((resolve, reject) => {
@@ -28,14 +28,14 @@ async function googleRequest(token, path, options = {}) {
   const response = await fetch(calendarUrl(path), {
     ...options,
     headers: {
-      Authorization: \`Bearer \${token}\`,
+      Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
       ...(options.headers || {})
     }
   });
   if (!response.ok) {
     const body = await response.text();
-    throw new Error(\`Google Kalender (\${response.status}): \${body.slice(0, 300)}\`);
+    throw new Error(`Google Kalender (${response.status}): ${body.slice(0, 300)}`);
   }
   if (response.status === 204) return null;
   return response.json();
@@ -62,7 +62,7 @@ async function getManagedEvents(token, calendarId, timeMin, timeMax) {
       timeMax: timeMax.toISOString()
     });
     if (pageToken) params.set("pageToken", pageToken);
-    const result = await googleRequest(token, \`/calendars/\${encodeURIComponent(calendarId)}/events?\${params}\`);
+    const result = await googleRequest(token, `/calendars/${encodeURIComponent(calendarId)}/events?${params}`);
     events.push(...(result.items || []));
     pageToken = result.nextPageToken || "";
   } while (pageToken);
@@ -93,7 +93,7 @@ async function testConnection() {
     const status = {
       ok: true,
       message: "Forbindelsen til Studie+ virker.",
-      detail: \`Session godkendt. GWT-svar: \${result.responsePrefix}. Strenge: \${result.stringCount}. Datafelter: \${result.dataCount}. Synlige lektioner: \${result.lessonCount}.\`
+      detail: `Session godkendt. GWT-svar: ${result.responsePrefix}. Strenge: ${result.stringCount}. Datafelter: ${result.dataCount}. Synlige lektioner: ${result.lessonCount}.`
     };
     await sendStatus(status);
     return status;
@@ -110,7 +110,7 @@ function mondayStart(date = new Date()) {
   return d;
 }
 async function applyPlan(token, calendarId, plan) {
-  const base = \`/calendars/\${encodeURIComponent(calendarId)}/events\`;
+  const base = `/calendars/${encodeURIComponent(calendarId)}/events`;
   for (const item of plan.create) {
     const body = eventBody(item.lesson);
     body.extendedProperties = { private: { [MANAGED_KEY]: item.key, [MANAGED_HASH]: contentHash(item.lesson) } };
@@ -119,10 +119,10 @@ async function applyPlan(token, calendarId, plan) {
   for (const item of plan.update) {
     const body = eventBody(item.lesson);
     body.extendedProperties = { private: { [MANAGED_KEY]: item.key, [MANAGED_HASH]: contentHash(item.lesson) } };
-    await googleRequest(token, \`\${base}/\${encodeURIComponent(item.id)}\`, { method: "PATCH", body: JSON.stringify(body) });
+    await googleRequest(token, `${base}/${encodeURIComponent(item.id)}`, { method: "PATCH", body: JSON.stringify(body) });
   }
   for (const id of plan.delete) {
-    await googleRequest(token, \`\${base}/\${encodeURIComponent(id)}\`, { method: "DELETE" });
+    await googleRequest(token, `${base}/${encodeURIComponent(id)}`, { method: "DELETE" });
   }
 }
 async function syncNow(interactive = false) {
@@ -136,8 +136,8 @@ async function syncNow(interactive = false) {
     const token = await googleToken(interactive);
     const calendarId = await ensureCalendar(token);
     const dates = lessons.map(lesson => lesson.date).sort();
-    const start = new Date(\`\${dates[0]}T00:00:00\`);
-    const end = new Date(\`\${dates[dates.length - 1]}T00:00:00\`);
+    const start = new Date(`${dates[0]}T00:00:00`);
+    const end = new Date(`${dates[dates.length - 1]}T00:00:00`);
     end.setDate(end.getDate() + 1);
     const existing = await getManagedEvents(token, calendarId, start, end);
     if (isSuspiciousDrop(existing.length, lessons.length)) {
@@ -147,7 +147,7 @@ async function syncNow(interactive = false) {
     await applyPlan(token, calendarId, plan);
     const status = {
       ok: true,
-      message: \`Synkroniseret: \${plan.create.length} nye, \${plan.update.length} ændrede, \${plan.delete.length} slettede, \${plan.unchanged} uændrede.\`,
+      message: `Synkroniseret: ${plan.create.length} nye, ${plan.update.length} ændrede, ${plan.delete.length} slettede, ${plan.unchanged} uændrede.`,
       counts: { lessons: lessons.length, created: plan.create.length, updated: plan.update.length, deleted: plan.delete.length, unchanged: plan.unchanged },
       pageTitle: result.pageTitle
     };
