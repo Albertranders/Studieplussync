@@ -11,6 +11,11 @@ Du skal også sende mig:
 - dit **Extension ID**. Du finder det på `chrome://extensions`, når udvidelsen er indlæst (se Installation herunder).
 - din **Gmail**, som du vil have kalenderbegivenhederne ind på. Det er også den konto, du skal logge ind med i Chrome.
 
+## Understøttede browsere
+
+- **Google Chrome**, version 116 eller nyere (Windows, macOS og Linux).
+- Opera, Edge, Brave, Vivaldi og andre Chromium-browsere understøttes **ikke** endnu, da Google-login bruger Chromes egen login-funktion, som kun virker i Chrome.
+
 ## Installation
 
 1. Åbn `chrome://extensions`.
