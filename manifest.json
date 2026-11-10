@@ -6,7 +6,7 @@
   "minimum_chrome_version": "116",
   "permissions": ["storage", "alarms", "identity", "tabs"],
   "host_permissions": [
-    "https://all.studieplus.dk/*",
+    "https://all.uddataplus.dk/*",
     "https://www.googleapis.com/*"
   ],
   "background": { "service_worker": "background.js", "type": "module" },
@@ -15,7 +15,7 @@
     "default_popup": "popup.html"
   },
   "content_scripts": [{
-    "matches": ["https://all.studieplus.dk/*"],
+    "matches": ["https://all.uddataplus.dk/*"],
     "js": ["content.js"],
     "run_at": "document_idle"
   }],

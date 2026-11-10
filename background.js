@@ -69,7 +69,7 @@ async function getManagedEvents(token, calendarId, timeMin, timeMax) {
   return events.filter(event => event.extendedProperties?.private?.[MANAGED_KEY]);
 }
 async function findStudyPlusTab() {
-  const tabs = await chrome.tabs.query({ url: "https://all.studieplus.dk/*" });
+  const tabs = await chrome.tabs.query({ url: "https://all.uddataplus.dk/*" });
   return tabs.find(tab => tab.id != null && !tab.discarded) || null;
 }
 async function readSchedule(tab) {
