@@ -35,7 +35,7 @@
     }
   ],
   "oauth2": {
-    "client_id": "644012646289-svl4kk44ohq4ta5kq87li1cd5o4nsv6c.apps.googleusercontent.com",
+    "client_id": "INSERT CLIENT ID HERE",
     "scopes": [
       "https://www.googleapis.com/auth/calendar.app.created"
     ]
