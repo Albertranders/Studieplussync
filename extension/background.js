@@ -2,7 +2,6 @@ import { buildPlan, contentHash, eventBody, isSafeSchedule, MANAGED_HASH, MANAGE
 
 const CALENDAR_NAME = "Studie+ skema";
 const ALARM_NAME = "studiesync-auto-sync";
-const WEEKS_AHEAD = 8;
 
 function storageGet(keys) {
   return chrome.storage.local.get(keys);
@@ -115,14 +114,15 @@ async function syncNow(interactive = false) {
 
     const token = await googleToken(interactive);
     const calendarId = await ensureCalendar(token);
-    const start = mondayStart();
-    const end = new Date(start);
-    end.setDate(end.getDate() + WEEKS_AHEAD * 7);
+    // Restrict reconciliation to dates actually present in the extracted view.
+    // A weekly timetable page may only contain one week; querying eight weeks and
+    // deleting everything not present would incorrectly erase future lessons.
+    const dates = lessons.map(lesson => lesson.date).sort();
+    const start = new Date(`${dates[0]}T00:00:00`);
+    const end = new Date(`${dates[dates.length - 1]}T00:00:00`);
+    end.setDate(end.getDate() + 1);
     const existing = await getManagedEvents(token, calendarId, start, end);
     const plan = buildPlan(lessons, existing);
-
-    // Never interpret an empty or malformed scrape as a request to delete calendar events.
-    if (!lessons.length) throw new Error("Studie+ returnerede ingen lektioner. Ingen kalenderændringer foretaget.");
 
     await applyPlan(token, calendarId, plan);
     const status = {
