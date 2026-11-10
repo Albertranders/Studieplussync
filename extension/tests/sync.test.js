@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildPlan, contentHash, eventBody, isSafeSchedule, MANAGED_HASH, MANAGED_KEY } from "../sync.js";
+import { buildPlan, contentHash, eventBody, isSafeSchedule, isSuspiciousDrop, MANAGED_HASH, MANAGED_KEY } from "../sync.js";
 
 const lesson = {
   id: "l-1", date: "2026-11-10", start: "08:00", end: "09:30",
@@ -58,4 +58,10 @@ test("rejects empty or malformed scraped schedules", () => {
   assert.equal(isSafeSchedule([]), false);
   assert.equal(isSafeSchedule([{ subject: "X" }]), false);
   assert.equal(isSafeSchedule([lesson]), true);
+});
+
+test("protects against partial schedule extraction", () => {
+  assert.equal(isSuspiciousDrop(12, 3), true);
+  assert.equal(isSuspiciousDrop(12, 6), false);
+  assert.equal(isSuspiciousDrop(3, 1), false);
 });
