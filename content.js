@@ -107,7 +107,7 @@
     };
   }
 
-  function extractLessons() {
+  async function extractLessons() {
     const reference = referenceDate();
     const columns = readDateColumns(reference);
     if (!columns.length) {
