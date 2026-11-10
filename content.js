@@ -93,7 +93,7 @@
       seen.add(lesson.id);
       lessons.push(lesson);
     }
-    lessons.sort((a, b) => \`\${a.date}T\${a.start}\`.localeCompare(\`\${b.date}T\${b.start}\`));
+    lessons.sort((a, b) => `${a.date}T${a.start}`.localeCompare(`${b.date}T${b.start}`));
     return lessons;
   }
 
