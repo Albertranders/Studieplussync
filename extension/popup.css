@@ -1,0 +1,18 @@
+:root { color-scheme: light; font-family: Inter, system-ui, sans-serif; }
+* { box-sizing: border-box; }
+body { width: 330px; margin: 0; background: #f7f8fa; color: #17202a; }
+main { padding: 18px; }
+header { display: flex; align-items: center; gap: 11px; margin-bottom: 18px; }
+.mark { width: 38px; height: 38px; display: grid; place-items: center; border-radius: 11px; background: #d9eee5; color: #17634c; font-weight: 800; font-size: 19px; }
+h1 { font-size: 17px; margin: 0; }
+header p, .status p { margin: 3px 0 0; color: #68737d; font-size: 12px; }
+.status { display: flex; gap: 10px; padding: 13px; background: white; border: 1px solid #e4e8ec; border-radius: 12px; margin-bottom: 13px; }
+.status strong { font-size: 13px; }
+.dot { width: 9px; height: 9px; border-radius: 50%; background: #9aa4ad; margin-top: 4px; flex: none; }
+.dot.good { background: #23865d; }
+.dot.bad { background: #c24b45; }
+button { width: 100%; border: 0; border-radius: 9px; padding: 11px 12px; font-size: 13px; font-weight: 650; cursor: pointer; margin: 5px 0; }
+button:disabled { opacity: .6; cursor: wait; }
+.primary { color: white; background: #17634c; }
+.secondary { color: #17634c; background: #e3f0eb; }
+.foot { color: #77818b; font-size: 11px; line-height: 1.45; margin: 10px 1px 0; }

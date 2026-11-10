@@ -1,0 +1,26 @@
+{
+  "manifest_version": 3,
+  "name": "StudieSync",
+  "description": "Synkroniser dit Studie+ skema med Google Kalender.",
+  "version": "0.1.0",
+  "minimum_chrome_version": "116",
+  "permissions": ["storage", "alarms", "identity", "tabs"],
+  "host_permissions": [
+    "https://all.studieplus.dk/*",
+    "https://www.googleapis.com/*"
+  ],
+  "background": { "service_worker": "background.js", "type": "module" },
+  "action": {
+    "default_title": "StudieSync",
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [{
+    "matches": ["https://all.studieplus.dk/*"],
+    "js": ["content.js"],
+    "run_at": "document_idle"
+  }],
+  "oauth2": {
+    "client_id": "REPLACE_WITH_GOOGLE_OAUTH_CLIENT_ID",
+    "scopes": ["https://www.googleapis.com/auth/calendar.app.created"]
+  }
+}
