@@ -16,3 +16,4 @@ button:disabled { opacity: .6; cursor: wait; }
 .primary { color: white; background: #17634c; }
 .secondary { color: #17634c; background: #e3f0eb; }
 .foot { color: #77818b; font-size: 11px; line-height: 1.45; margin: 10px 1px 0; }
+\n.setting { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 14px 1px 2px; font-size: 13px; font-weight: 650; }\n.setting select { min-width: 105px; padding: 7px 9px; border: 1px solid #d8e0e5; border-radius: 8px; background: white; color: #17202a; font: inherit; }\n.setting-help { margin-top: 3px; }\n
