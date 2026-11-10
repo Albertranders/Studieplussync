@@ -107,7 +107,25 @@
 
     const body = await response.text();
     if (!response.ok) throw new Error(`Studie+ skemakald HTTP ${response.status}`);
-    if (body.startsWith("//EX")) throw new Error("Studie+ returnerede en GWT-fejl.");
+    if (body.startsWith("//EX")) {
+      let detail = "Ukendt serverfejl.";
+      try {
+        const payload = JSON.parse(body.slice(4));
+        const strings = [];
+        const collect = value => {
+          if (typeof value === "string") strings.push(value);
+          else if (Array.isArray(value)) value.forEach(collect);
+        };
+        collect(payload);
+        const useful = strings
+          .filter(value => value.length > 2 && !/^\\d+$/.test(value))
+          .map(value => value.replace(/[\\r\\n\\t]+/g, " ").slice(0, 180));
+        if (useful.length) detail = useful.slice(0, 3).join(" | ");
+      } catch {
+        detail = body.slice(4, 184).replace(/[\\r\\n\\t]+/g, " ");
+      }
+      throw new Error("Studie+ GWT-fejl: " + detail);
+    }
     if (!body.startsWith("//OK")) {
       throw new Error("Studie+ returnerede ikke et gyldigt skemasvar.");
     }
