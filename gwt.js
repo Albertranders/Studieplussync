@@ -43,9 +43,40 @@
   }
 
   function decodePayload(text) {
-    const source = text.replace(/^\/\/OK/, "").trim();
-    const decoder = new Function("return (" + source + ")");
-    return decoder();
+    let source = text.replace(/^\\/\\/OK/, "").trim();
+    const chunks = [];
+    while (source.length) {
+      const start = source.indexOf("[");
+      if (start < 0) throw new Error("Ugyldigt GWT-svar.");
+      let depth = 0;
+      let inString = false;
+      let escaped = false;
+      let end = -1;
+      for (let i = start; i < source.length; i++) {
+        const ch = source[i];
+        if (inString) {
+          if (escaped) escaped = false;
+          else if (ch === "\\\\") escaped = true;
+          else if (ch === '"') inString = false;
+          continue;
+        }
+        if (ch === '"') inString = true;
+        else if (ch === "[") depth++;
+        else if (ch === "]") {
+          depth--;
+          if (depth === 0) { end = i + 1; break; }
+        }
+      }
+      if (end < 0) throw new Error("Ufuldstændigt GWT-svar.");
+      chunks.push(JSON.parse(source.slice(start, end)));
+      source = source.slice(end).trim();
+      if (!source) break;
+      if (!source.startsWith(".concat(") || !source.endsWith(")")) {
+        throw new Error("Ukendt GWT-svarformat.");
+      }
+      source = source.slice(8, -1).trim();
+    }
+    return chunks.reduce((all, chunk) => all.concat(chunk), []);
   }
 
   async function fetchSchedule(startDate, endDate) {
