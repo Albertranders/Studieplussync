@@ -1,0 +1,43 @@
+{
+  "manifest_version": 3,
+  "name": "StudieSync",
+  "description": "Synkroniser dit Studie+ skema med Google Kalender.",
+  "version": "0.1.0",
+  "minimum_chrome_version": "116",
+  "permissions": [
+    "storage",
+    "alarms",
+    "identity",
+    "tabs"
+  ],
+  "host_permissions": [
+    "https://all.uddataplus.dk/*",
+    "https://www.googleapis.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "StudieSync",
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://all.uddataplus.dk/*"
+      ],
+      "js": [
+        "gwt.js",
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "oauth2": {
+    "client_id": "644012646289-svl4kk44ohq4ta5kq87li1cd5o4nsv6c.apps.googleusercontent.com",
+    "scopes": [
+      "https://www.googleapis.com/auth/calendar.app.created"
+    ]
+  }
+}
