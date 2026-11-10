@@ -83,7 +83,7 @@
     const config = await discover();
     const payload =
       "7|0|6|" +
-      config.moduleBase +
+      config.moduleBase + "|" +
       config.serviceHash + "|" +
       "dk.uddata.services.interfaces.SkemaService|" +
       "hentEgnePersSkemaData|" +
