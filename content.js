@@ -145,13 +145,15 @@
     if (message?.type !== "STUDIESYNC_READ_SCHEDULE") return;
     try {
       extractLessons().then(({ lessons, gwt }) => sendResponse({
-        ok: lessons.length > 0,
+        ok: false,
         lessons,
         gwt,
         pageTitle: document.title,
         pageUrl: location.href,
         count: lessons.length,
-        error: lessons.length ? null : "Kunne ikke genkende skemalektioner på siden. Kontrollér, at skemaet er synligt."
+        error: lessons.length
+          ? "GWT-data er hentet, men lektier og noter er endnu ikke fortolket. Synkronisering er derfor sat på pause."
+          : "Kunne ikke genkende skemalektioner på siden. Kontrollér, at skemaet er synligt."
       })).catch(error => sendResponse({ ok: false, lessons: [], error: String(error?.message || error) }));
     } catch (error) {
       sendResponse({ ok: false, lessons: [], error: String(error?.message || error) });
