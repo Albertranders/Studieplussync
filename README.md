@@ -33,11 +33,3 @@ Udvidelsen bruger brugerens eksisterende login i Studie+. Den beder ikke om adga
 Skemalæseren er en første DOM-adapter. Den skal valideres mod Studie+ i en rigtig browser, da Studie+ kan ændre sin HTML. Hvis skemaet ikke kan læses sikkert, stopper synkroniseringen uden at ændre kalenderen.
 
 Automatisk synkronisering forsøges hvert 30. minut, mens Chrome kører. Studie+-fanen skal være åben og logget ind.
-
-## Test
-
-```bash
-npm test
-```
-
-Udvidelsen indlæses direkte fra repositoryets rodmappe. Der er ingen separat extension-mappe.
