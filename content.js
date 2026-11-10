@@ -111,13 +111,10 @@
     let gwt = { ok: false, error: "Ingen lektioner at hente." };
     const dates = [...new Set(lessons.map(lesson => lesson.date))].sort();
     if (dates.length && window.StudySyncGwt) {
-      try {
-        gwt = await window.StudySyncGwt.fetchSchedule(dates[0], dates[dates.length - 1]);
-      } catch (error) {
-        gwt = { ok: false, error: String(error?.message || error) };
-      }
+      try { gwt = await window.StudySyncGwt.fetchSchedule(dates[0], dates[dates.length - 1]); }
+      catch (error) { gwt = { ok: false, error: String(error?.message || error) }; }
     }
-    return { lessons, gwt };
+    return { lessons: gwt.ok && Array.isArray(gwt.lessons) ? gwt.lessons : [], gwt };
   }
 
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
@@ -126,17 +123,10 @@
       return true;
     }
     if (message?.type !== "STUDIESYNC_READ_SCHEDULE") return;
-    extractLessons().then(({ lessons, gwt }) => sendResponse({
-      ok: false,
-      lessons,
-      gwt,
-      pageTitle: document.title,
-      pageUrl: location.href,
-      count: lessons.length,
-      error: lessons.length
-        ? "GWT-data er hentet, men lektier og noter er endnu ikke fortolket. Synkronisering er derfor sat på pause."
-        : "Kunne ikke genkende skemalektioner på siden. Kontrollér, at skemaet er synligt."
-    })).catch(error => sendResponse({ ok: false, lessons: [], error: String(error?.message || error) }));
+    extractLessons().then(({ lessons, gwt }) => {
+      const valid = Array.isArray(lessons) && lessons.length > 0 && lessons.every(l => l.date && l.start && l.end && l.subject);
+      sendResponse({ ok: valid && gwt.ok === true, lessons, gwt, pageTitle: document.title, pageUrl: location.href, count: lessons.length, error: valid && gwt.ok === true ? "" : (gwt.error || "GWT-dataene kunne ikke valideres. Synkronisering er sat på pause.") });
+    }).catch(error => sendResponse({ ok: false, lessons: [], error: String(error?.message || error) }));
     return true;
   });
 })();
