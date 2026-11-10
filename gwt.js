@@ -119,8 +119,8 @@
         collect(payload);
         const useful = strings
           .filter(value => value.length > 2 && !/^\\d+$/.test(value))
-          .map(value => value.replace(/[\\r\\n\\t]+/g, " ").slice(0, 180));
-        if (useful.length) detail = useful.slice(0, 3).join(" | ");
+          .map(value => value.replace(/[\r\n\t]+/g, " "));
+        if (useful.length) detail = useful.join(" | ").slice(0, 12000);
       } catch {
         detail = body.slice(4, 184).replace(/[\\r\\n\\t]+/g, " ");
       }
