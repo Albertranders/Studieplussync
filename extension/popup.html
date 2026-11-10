@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="da">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>StudieSync</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <main>
+    <header>
+      <div class="mark">S</div>
+      <div><h1>StudieSync</h1><p>Studie+ → Google Kalender</p></div>
+    </header>
+    <section class="status" aria-live="polite">
+      <span id="dot" class="dot"></span>
+      <div><strong id="state">Klar til synkronisering</strong><p id="detail">Log ind på Studie+ i en fane.</p></div>
+    </section>
+    <button id="connect" class="secondary">Forbind Google Kalender</button>
+    <button id="sync" class="primary">Synkronisér nu</button>
+    <p class="foot">Automatisk synkronisering kører hvert 30. minut, mens Chrome er åben.</p>
+    <p class="foot" id="updated"></p>
+  </main>
+  <script src="popup.js"></script>
+</body>
+</html>
