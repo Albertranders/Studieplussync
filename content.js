@@ -1,115 +1,131 @@
 (() => {
   "use strict";
 
-  const DATE_KEYS = ["data-date", "data-day", "data-datevalue", "data-start-date"];
-  const START_KEYS = ["data-start", "data-start-time", "data-begin", "data-from"];
-  const END_KEYS = ["data-end", "data-end-time", "data-finish", "data-to"];
-  const ID_KEYS = ["data-lesson-id", "data-skema-id", "data-event-id", "data-id"];
+  const DAY_NAMES = {
+    man: 1, tir: 2, ons: 3, tor: 4, fre: 5, "lør": 6, "søn": 0
+  };
 
-  function attr(node, keys) {
-    for (const key of keys) {
-      const value = node.getAttribute?.(key);
-      if (value) return value.trim();
-    }
-    return "";
+  function referenceDate() {
+    const match = location.href.match(/(20\\d{2})-(\\d{1,2})-(\\d{1,2})/);
+    if (match) return new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
+    const now = new Date();
+    return new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
   }
 
-  function normaliseDate(value) {
-    if (!value) return "";
-    const iso = value.match(/(20\d{2})[-/.](\d{1,2})[-/.](\d{1,2})/);
-    if (iso) return `${iso[1]}-${iso[2].padStart(2, "0")}-${iso[3].padStart(2, "0")}`;
-    const dk = value.match(/(\d{1,2})[-/.](\d{1,2})[-/.](20\d{2})/);
-    if (dk) return `${dk[3]}-${dk[2].padStart(2, "0")}-${dk[1].padStart(2, "0")}`;
-    return "";
-  }
+  function dateFromHeader(label, reference) {
+    const match = label.trim().match(/^(man|tir|ons|tor|fre|lør|søn)\\s+(\\d{1,2})\\/(\\d{1,2})$/i);
+    if (!match) return "";
+    const weekday = DAY_NAMES[match[1].toLowerCase()];
+    const day = Number(match[2]);
+    const month = Number(match[3]);
+    const candidates = [];
 
-  function normaliseTime(value) {
-    if (!value) return "";
-    const match = value.match(/(?:T|^|\s)(\d{1,2})[:.](\d{2})/);
-    return match ? `${match[1].padStart(2, "0")}:${match[2]}` : "";
-  }
-
-  function textOf(node) {
-    return (node.innerText || node.textContent || "").replace(/\s+/g, " ").trim();
-  }
-
-  function findDate(node) {
-    for (let current = node; current && current !== document.body; current = current.parentElement) {
-      const direct = normaliseDate(attr(current, DATE_KEYS));
-      if (direct) return direct;
-      const time = current.querySelector?.("time[datetime]");
-      if (time) {
-        const fromTime = normaliseDate(time.getAttribute("datetime"));
-        if (fromTime) return fromTime;
+    for (const year of [reference.getUTCFullYear() - 1, reference.getUTCFullYear(), reference.getUTCFullYear() + 1]) {
+      const date = new Date(Date.UTC(year, month - 1, day));
+      if (date.getUTCDate() === day && date.getUTCMonth() === month - 1 && date.getUTCDay() === weekday) {
+        candidates.push(date);
       }
     }
-    return "";
-  }
 
-  function findTimeRange(node) {
-    const startAttr = normaliseTime(attr(node, START_KEYS));
-    const endAttr = normaliseTime(attr(node, END_KEYS));
-    if (startAttr && endAttr) return [startAttr, endAttr];
-
-    const timeNodes = [...node.querySelectorAll("time[datetime], time")];
-    const times = timeNodes.map(n => normaliseTime(n.getAttribute("datetime") || textOf(n))).filter(Boolean);
-    if (times.length >= 2) return [times[0], times[1]];
-
-    const match = textOf(node).match(/(\d{1,2})[:.](\d{2})\s*[-–—]\s*(\d{1,2})[:.](\d{2})/);
-    if (match) return [
-      `${match[1].padStart(2, "0")}:${match[2]}`,
-      `${match[3].padStart(2, "0")}:${match[4]}`
-    ];
-    return ["", ""];
-  }
-
-  function clean(value) {
-    return (value || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
-  }
-
-  function extractNode(node) {
-    const raw = textOf(node);
-    const [start, end] = findTimeRange(node);
-    const date = findDate(node);
-    if (!date || !start || !end || !raw) return null;
-
-    const subject = clean(
-      attr(node, ["data-subject", "data-title", "aria-label"]) ||
-      node.querySelector?.("[data-subject], .subject, .title, h1, h2, h3")?.textContent ||
-      raw.replace(/\d{1,2}[:.]\d{2}\s*[-–—]\s*\d{1,2}[:.]\d{2}/, "")
+    if (!candidates.length) return "";
+    candidates.sort((a, b) =>
+      Math.abs(a.getTime() - reference.getTime()) - Math.abs(b.getTime() - reference.getTime())
     );
-    if (!subject || subject.length > 180) return null;
+    const chosen = candidates[0];
+    return [
+      chosen.getUTCFullYear(),
+      String(chosen.getUTCMonth() + 1).padStart(2, "0"),
+      String(chosen.getUTCDate()).padStart(2, "0")
+    ].join("-");
+  }
 
-    const id = attr(node, ID_KEYS) || `${date}|${start}|${subject}`;
-    const room = clean(attr(node, ["data-room"]) || node.querySelector?.("[data-room], .room")?.textContent || "");
-    const teacher = clean(attr(node, ["data-teacher"]) || node.querySelector?.("[data-teacher], .teacher")?.textContent || "");
-    const homework = clean(attr(node, ["data-homework"]) || node.querySelector?.("[data-homework], .homework")?.textContent || "");
-    const note = clean(attr(node, ["data-note"]) || node.querySelector?.("[data-note], .note")?.textContent || "");
+  function readDateColumns(reference) {
+    return [...document.querySelectorAll("th.fc-widget-header")]
+      .map(header => {
+        const label = header.querySelector(".gwt-Label")?.textContent?.trim() || "";
+        const rect = header.getBoundingClientRect();
+        const date = dateFromHeader(label, reference);
+        if (!date || rect.width <= 0) return null;
+        return { date, center: rect.left + rect.width / 2, width: rect.width };
+      })
+      .filter(Boolean);
+  }
 
-    return { id, date, start, end, subject, room, teacher, homework, note };
+  function readSvgText(node) {
+    return [...node.querySelectorAll("text")].map(element => ({
+      text: (element.textContent || "").replace(/\\s+/g, " ").trim(),
+      x: Number(element.getAttribute("x")),
+      y: Number(element.getAttribute("y"))
+    })).filter(item => item.text);
+  }
+
+  function nearestDate(node, columns) {
+    const matrix = node.getScreenCTM?.();
+    const rect = node.querySelector("rect");
+    if (!matrix || !rect || !columns.length) return "";
+    const center = matrix.e + Number(rect.getAttribute("x") || 0) +
+      Number(rect.getAttribute("width") || 0) / 2;
+
+    let nearest = null;
+    for (const column of columns) {
+      const distance = Math.abs(center - column.center);
+      if (!nearest || distance < nearest.distance) nearest = { column, distance };
+    }
+    if (!nearest || nearest.distance > Math.max(30, nearest.column.width * 0.4)) return "";
+    return nearest.column.date;
+  }
+
+  function parseLesson(node, columns) {
+    const texts = readSvgText(node);
+    const timeText = texts.find(item => /^\\d{1,2}:\\d{2}\\s*-\\s*\\d{1,2}:\\d{2}$/.test(item.text));
+    if (!timeText) return null;
+
+    const timeMatch = timeText.text.match(/^(\\d{1,2}:\\d{2})\\s*-\\s*(\\d{1,2}:\\d{2})$/);
+    const subjectText = texts.find(item => item.y === 28 && item.text !== timeText.text) ||
+      texts.find(item => item !== timeText && item.y !== 44 && !/^\\d{1,2}:\\d{2}/.test(item.text));
+    const date = nearestDate(node, columns);
+    if (!date || !subjectText) return null;
+
+    const details = texts.filter(item => item.y === 44);
+    const teacher = details.find(item => item.x <= 30)?.text || "";
+    const room = details.find(item => item.x > 70)?.text || "";
+    const classCode = texts.find(item => item.x < 0 && item.y < 0)?.text || "";
+    const subject = subjectText.text;
+    const start = timeMatch[1].padStart(5, "0");
+    const end = timeMatch[2].padStart(5, "0");
+
+    return {
+      id: [date, start, subject, room, teacher, classCode].join("|"),
+      date,
+      start,
+      end,
+      subject,
+      room,
+      teacher,
+      homework: "",
+      note: ""
+    };
   }
 
   function extractLessons() {
-    const selectors = [
-      "[data-lesson-id]", "[data-skema-id]", "[data-event-id]",
-      "[data-start][data-end]", "[data-start-time][data-end-time]",
-      ".fc-event", "[class*='lesson-card']", "[class*='lektion']"
-    ];
-    const nodes = new Set();
-    for (const selector of selectors) {
-      document.querySelectorAll(selector).forEach(node => nodes.add(node));
+    const reference = referenceDate();
+    const columns = readDateColumns(reference);
+    if (!columns.length) {
+      throw new Error("Kunne ikke finde datooverskrifterne i Studie+ skemaet.");
     }
 
+    const nodes = [...document.querySelectorAll("g.O2HAI5C-h-b")];
     const lessons = [];
     const seen = new Set();
+
     for (const node of nodes) {
-      const lesson = extractNode(node);
+      const lesson = parseLesson(node, columns);
       if (!lesson) continue;
-      const key = `${lesson.id}|${lesson.date}|${lesson.start}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
+      if (seen.has(lesson.id)) continue;
+      seen.add(lesson.id);
       lessons.push(lesson);
     }
+
     lessons.sort((a, b) => `${a.date}T${a.start}`.localeCompare(`${b.date}T${b.start}`));
     return lessons;
   }
@@ -124,7 +140,7 @@
         pageTitle: document.title,
         pageUrl: location.href,
         count: lessons.length,
-        error: lessons.length ? null : "Kunne ikke genkende skemalektioner på siden. Studie+ kan have ændret sidens struktur."
+        error: lessons.length ? null : "Kunne ikke genkende skemalektioner på siden. Kontrollér, at skemaet er synligt."
       });
     } catch (error) {
       sendResponse({ ok: false, lessons: [], error: String(error?.message || error) });
