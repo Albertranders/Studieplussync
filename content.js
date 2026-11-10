@@ -127,21 +127,32 @@
     }
 
     lessons.sort((a, b) => `${a.date}T${a.start}`.localeCompare(`${b.date}T${b.start}`));
-    return lessons;
+
+    // Reuse the signed-in browser session. Cookie values are never read or copied.
+    const dates = [...new Set(lessons.map(lesson => lesson.date))].sort();
+    let gwt = { ok: false, error: "Ingen lektioner at hente." };
+    if (dates.length && window.StudySyncGwt) {
+      try {
+        gwt = await window.StudySyncGwt.fetchSchedule(dates[0], dates[dates.length - 1]);
+      } catch (error) {
+        gwt = { ok: false, error: String(error?.message || error) };
+      }
+    }
+    return { lessons, gwt };
   }
 
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     if (message?.type !== "STUDIESYNC_READ_SCHEDULE") return;
     try {
-      const lessons = extractLessons();
-      sendResponse({
+      extractLessons().then(({ lessons, gwt }) => sendResponse({
         ok: lessons.length > 0,
         lessons,
+        gwt,
         pageTitle: document.title,
         pageUrl: location.href,
         count: lessons.length,
         error: lessons.length ? null : "Kunne ikke genkende skemalektioner på siden. Kontrollér, at skemaet er synligt."
-      });
+      })).catch(error => sendResponse({ ok: false, lessons: [], error: String(error?.message || error) }));
     } catch (error) {
       sendResponse({ ok: false, lessons: [], error: String(error?.message || error) });
     }
