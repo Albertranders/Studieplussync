@@ -4,7 +4,7 @@ const dot = document.getElementById("dot");
 const syncButton = document.getElementById("sync");
 const connectButton = document.getElementById("connect");
 const testButton = document.getElementById("test");
-const updated = document.getElementById("updated");
+const updated = document.getElementById("updated");\nconst weeksSelect = document.getElementById("weeks");
 
 function setStatus(status) {
   if (!status) return;
@@ -40,6 +40,6 @@ syncButton.addEventListener("click", async () => {
   const result = await message("STUDIESYNC_SYNC");
   syncButton.disabled = false;
   setStatus(result);
-  await load();
+  await weeksSelect.addEventListener("change", async () => {\n  const weeks = Math.max(1, Math.min(12, Number(weeksSelect.value) || 4));\n  await chrome.storage.local.set({ scheduleWeeks: weeks });\n});\n\nload();
 });
 load();

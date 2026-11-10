@@ -72,9 +72,9 @@ async function findStudyPlusTab() {
   const tabs = await chrome.tabs.query({ url: "https://all.uddataplus.dk/*" });
   return tabs.find(tab => tab.id != null && !tab.discarded) || null;
 }
-function sendTabMessage(tab, type) {
+function sendTabMessage(tab, type, weeks) {
   return new Promise((resolve, reject) => {
-    chrome.tabs.sendMessage(tab.id, { type }, response => {
+    chrome.tabs.sendMessage(tab.id, { type, weeks }, response => {
       const error = chrome.runtime.lastError;
       if (error) reject(new Error("Åbn Studie+ skemaet, og genindlæs siden. " + error.message));
       else if (!response?.ok) reject(new Error(response?.error || "Kunne ikke læse Studie+ svaret."));
@@ -89,7 +89,7 @@ async function testConnection() {
   try {
     const tab = await findStudyPlusTab();
     if (!tab) throw new Error("Åbn Studie+ skemaet i Chrome, og log ind først.");
-    const result = await sendTabMessage(tab, "STUDIESYNC_TEST_CONNECTION");
+    const result = await sendTabMessage(tab, "STUDIESYNC_TEST_CONNECTION", await scheduleWeeks());
     const status = {
       ok: true,
       message: "Forbindelsen til Studie+ virker.",
