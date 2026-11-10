@@ -193,19 +193,18 @@
     return root.map((lesson,index)=>{
       const hasStart=lesson?.start instanceof Date;
       const hasEnd=lesson?.end instanceof Date;
-      const hasSubject=typeof lesson?.subject==="string"&&lesson.subject.trim().length>0;
-      if(!hasStart||!hasEnd||!hasSubject){
+      if(!hasStart||!hasEnd){
         const missing=[];
         if(!hasStart)missing.push("starttid mangler");
         if(!hasEnd)missing.push("sluttid mangler");
-        if(!hasSubject)missing.push("fag mangler");
         const kind=lesson&&typeof lesson==="object"?(lesson.constructor?.name||"objekt"):String(lesson);
         throw new Error("Studie+ indeholder en skemapost, som parseren ikke kan læse (post "+(index+1)+"). "+missing.join(", ")+". Datatype: "+kind+". Ingen lektioner er synkroniseret. Send denne fejltekst til udvikleren.");
       }
       const date=[lesson.start.getFullYear(),String(lesson.start.getMonth()+1).padStart(2,"0"),String(lesson.start.getDate()).padStart(2,"0")].join("-");
       const start=String(lesson.start.getHours()).padStart(2,"0")+":"+String(lesson.start.getMinutes()).padStart(2,"0");
       const end=String(lesson.end.getHours()).padStart(2,"0")+":"+String(lesson.end.getMinutes()).padStart(2,"0");
-      return {id:String(lesson.lessonId||[date,start,lesson.subject].join("|")),lessonId:lesson.lessonId,date,start,end,subject:lesson.subject,teacher:lesson.teachers.join(", "),room:lesson.rooms.join(", "),homework:lesson.homework,note:lesson.note,hasFiles:lesson.hasFiles,fileContainerId:lesson.fileContainerId};
+      const subject=typeof lesson.subject==="string"&&lesson.subject.trim()?lesson.subject.trim():"Manglende Titel";
+      return {id:String(lesson.lessonId||[date,start,subject].join("|")),lessonId:lesson.lessonId,date,start,end,subject,teacher:lesson.teachers.join(", "),room:lesson.rooms.join(", "),homework:lesson.homework,note:lesson.note,hasFiles:lesson.hasFiles,fileContainerId:lesson.fileContainerId};
     });
   }
 
