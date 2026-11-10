@@ -97,24 +97,35 @@
     return lessons;
   }
 
-  async function testConnection() {
-    const lessons = readVisibleLessons();
-    const dates = [...new Set(lessons.map(lesson => lesson.date))].sort();
-    if (!dates.length) throw new Error("Der blev ikke fundet synlige lektioner. Åbn en uge med skemalektioner.");
-    if (!window.StudySyncGwt) throw new Error("GWT-modulet blev ikke indlæst. Genindlæs Studie+ fanen.");
-    const result = await window.StudySyncGwt.fetchSchedule(dates[0], dates[dates.length - 1]);
-    return { ...result, lessonCount: lessons.length };
+  function formatDate(date) {
+    return [date.getFullYear(), String(date.getMonth() + 1).padStart(2, "0"), String(date.getDate()).padStart(2, "0")].join("-");
   }
 
-  async function extractLessons() {
-    const lessons = readVisibleLessons();
+  function scheduleRange(weeks) {
+    const count = Math.max(1, Math.min(12, Number(weeks) || 4));
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
+    const end = new Date(start);
+    end.setDate(end.getDate() + count * 7 - 1);
+    return { start: formatDate(start), end: formatDate(end) };
+  }
+
+  async function testConnection(weeks) {
+    if (!window.StudySyncGwt) throw new Error("GWT-modulet blev ikke indlæst. Genindlæs Studie+ fanen.");
+    const range = scheduleRange(weeks);
+    const result = await window.StudySyncGwt.fetchSchedule(range.start, range.end);
+    return { ...result, lessonCount: result.lessons?.length || 0, dateRange: range };
+  }
+
+  async function extractLessons(weeks) {
+    const range = scheduleRange(weeks);
     let gwt = { ok: false, error: "Ingen lektioner at hente." };
-    const dates = [...new Set(lessons.map(lesson => lesson.date))].sort();
-    if (dates.length && window.StudySyncGwt) {
-      try { gwt = await window.StudySyncGwt.fetchSchedule(dates[0], dates[dates.length - 1]); }
+    if (window.StudySyncGwt) {
+      try { gwt = await window.StudySyncGwt.fetchSchedule(range.start, range.end); }
       catch (error) { gwt = { ok: false, error: String(error?.message || error) }; }
     }
-    return { lessons: gwt.ok && Array.isArray(gwt.lessons) ? gwt.lessons : [], gwt };
+    return { lessons: gwt.ok && Array.isArray(gwt.lessons) ? gwt.lessons : [], gwt, dateRange: range };
   }
 
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
