@@ -96,8 +96,10 @@
       const marker=strings[n-1];
       if(typeof marker!=="string"||!marker.includes("/")) return n;
       const name=marker.slice(0,marker.lastIndexOf("/"));
+      const objectIndex=objects.length;
+      objects.push(null);
       const value=deserialize(name);
-      objects.push(value);
+      objects[objectIndex]=value;
       return value;
     };
     const readList=()=>{const count=Number(pop());if(!Number.isInteger(count)||count<0||count>10000)throw new Error("Ugyldigt antal elementer i GWT-liste.");return Array.from({length:count},()=>readObject());};
