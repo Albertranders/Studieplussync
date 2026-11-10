@@ -20,7 +20,7 @@
     "run_at": "document_idle"
   }],
   "oauth2": {
-    "client_id": "644012646289-r9nnet90cri9l8j2c4t41tquucolno6e.apps.googleusercontent.com",
+    "client_id": "644012646289-svl4kk44ohq4ta5kq87li1cd5o4nsv6c.apps.googleusercontent.com",
     "scopes": ["https://www.googleapis.com/auth/calendar.app.created"]
   }
 }
