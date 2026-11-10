@@ -24,21 +24,35 @@ async function googleToken(interactive) {
     });
   });
 }
+const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+const WRITE_DELAY_MS = 300;   // pause mellem skrivninger, så Google ikke rate-limiter
+const MAX_TRIES = 6;
+function isRateLimited(status, body) {
+  return status === 429 || (status === 403 && /rate\s*limit|quota/i.test(body));
+}
 async function googleRequest(token, path, options = {}) {
-  const response = await fetch(calendarUrl(path), {
-    ...options,
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-      ...(options.headers || {})
+  for (let attempt = 1; ; attempt++) {
+    const response = await fetch(calendarUrl(path), {
+      ...options,
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+        ...(options.headers || {})
+      }
+    });
+    if (response.ok) {
+      if (response.status === 204) return null;
+      return response.json();
     }
-  });
-  if (!response.ok) {
     const body = await response.text();
-    throw new Error(`Google Kalender (${response.status}): ${body.slice(0, 300)}`);
+    const retryable = isRateLimited(response.status, body) || response.status >= 500;
+    if (!retryable || attempt >= MAX_TRIES) {
+      throw new Error(`Google Kalender (${response.status}): ${body.slice(0, 300)}`);
+    }
+    const retryAfter = Number(response.headers.get("Retry-After"));
+    const wait = retryAfter > 0 ? retryAfter * 1000 : Math.min(1000 * 2 ** attempt, 30000);
+    await sleep(wait + Math.random() * 500);
   }
-  if (response.status === 204) return null;
-  return response.json();
 }
 async function ensureCalendar(token) {
   const { calendarId } = await storageGet(["calendarId"]);
@@ -119,14 +133,17 @@ async function applyPlan(token, calendarId, plan) {
     const body = eventBody(item.lesson);
     body.extendedProperties = { private: { [MANAGED_KEY]: item.key, [MANAGED_HASH]: contentHash(item.lesson) } };
     await googleRequest(token, base, { method: "POST", body: JSON.stringify(body) });
+    await sleep(WRITE_DELAY_MS);
   }
   for (const item of plan.update) {
     const body = eventBody(item.lesson);
     body.extendedProperties = { private: { [MANAGED_KEY]: item.key, [MANAGED_HASH]: contentHash(item.lesson) } };
     await googleRequest(token, `${base}/${encodeURIComponent(item.id)}`, { method: "PATCH", body: JSON.stringify(body) });
+    await sleep(WRITE_DELAY_MS);
   }
   for (const id of plan.delete) {
     await googleRequest(token, `${base}/${encodeURIComponent(id)}`, { method: "DELETE" });
+    await sleep(WRITE_DELAY_MS);
   }
 }
 async function syncNow(interactive = false) {
