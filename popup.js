@@ -4,7 +4,8 @@ const dot = document.getElementById("dot");
 const syncButton = document.getElementById("sync");
 const connectButton = document.getElementById("connect");
 const testButton = document.getElementById("test");
-const updated = document.getElementById("updated");\nconst weeksSelect = document.getElementById("weeks");
+const updated = document.getElementById("updated");
+const weeksSelect = document.getElementById("weeks");
 
 function setStatus(status) {
   if (!status) return;
@@ -16,6 +17,8 @@ function message(type) {
   return new Promise(resolve => chrome.runtime.sendMessage({ type }, resolve));
 }
 async function load() {
+  const settings = await chrome.storage.local.get({ scheduleWeeks: 4 });
+  weeksSelect.value = String(settings.scheduleWeeks);
   const result = await message("STUDIESYNC_STATUS");
   if (result?.lastStatus) setStatus(result.lastStatus);
   if (result?.lastUpdated) updated.textContent = "Sidst kørt: " + new Date(result.lastUpdated).toLocaleString("da-DK");
@@ -40,6 +43,11 @@ syncButton.addEventListener("click", async () => {
   const result = await message("STUDIESYNC_SYNC");
   syncButton.disabled = false;
   setStatus(result);
-  await weeksSelect.addEventListener("change", async () => {\n  const weeks = Math.max(1, Math.min(12, Number(weeksSelect.value) || 4));\n  await chrome.storage.local.set({ scheduleWeeks: weeks });\n});\n\nload();
 });
+
+weeksSelect.addEventListener("change", async () => {
+  const weeks = Math.max(1, Math.min(12, Number(weeksSelect.value) || 4));
+  await chrome.storage.local.set({ scheduleWeeks: weeks });
+});
+
 load();

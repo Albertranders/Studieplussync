@@ -72,6 +72,10 @@ async function findStudyPlusTab() {
   const tabs = await chrome.tabs.query({ url: "https://all.uddataplus.dk/*" });
   return tabs.find(tab => tab.id != null && !tab.discarded) || null;
 }
+async function scheduleWeeks() {
+  const { scheduleWeeks = 4 } = await storageGet(["scheduleWeeks"]);
+  return Math.max(1, Math.min(12, Number(scheduleWeeks) || 4));
+}
 function sendTabMessage(tab, type, weeks) {
   return new Promise((resolve, reject) => {
     chrome.tabs.sendMessage(tab.id, { type, weeks }, response => {
@@ -83,7 +87,7 @@ function sendTabMessage(tab, type, weeks) {
   });
 }
 async function readSchedule(tab) {
-  return sendTabMessage(tab, "STUDIESYNC_READ_SCHEDULE");
+  return sendTabMessage(tab, "STUDIESYNC_READ_SCHEDULE", await scheduleWeeks());
 }
 async function testConnection() {
   try {
@@ -93,7 +97,7 @@ async function testConnection() {
     const status = {
       ok: true,
       message: "Forbindelsen til Studie+ virker.",
-      detail: `Session godkendt. GWT-svar: ${result.responsePrefix}. Strenge: ${result.stringCount}. Datafelter: ${result.dataCount}. Synlige lektioner: ${result.lessonCount}.`
+      detail: `Session godkendt. ${result.lessonCount} lektioner fundet for ${result.dateRange.start} til ${result.dateRange.end}.`
     };
     await sendStatus(status);
     return status;
