@@ -13,8 +13,9 @@ Du skal også sende mig:
 
 ## Understøttede browsere
 
-- **Google Chrome**, version 116 eller nyere (Windows, macOS og Linux).
-- Opera, Edge, Brave, Vivaldi og andre Chromium-browsere understøttes **ikke** endnu, da Google-login bruger Chromes egen login-funktion, som kun virker i Chrome.
+- **Google Chrome**, version 116 eller nyere (Windows, macOS og Linux). Bruger Chromes eget Google-login.
+- **Opera** og **Edge** (Chromium 116 eller nyere). Bruger et almindeligt Google-loginvindue (`launchWebAuthFlow`). Se "Opera og Edge" herunder.
+- Brave, Vivaldi og andre Chromium-browsere er ikke testet.
 
 ## Installation
 
@@ -27,6 +28,18 @@ Du skal også sende mig:
 7. Log ind i Chrome med samme Gmail, som du har sendt til mig.
 8. Åbn Studie+ og log ind.
 9. Åbn StudieSync, forbind Google Kalender, og vælg **Synkronisér nu**.
+
+## Opera og Edge
+
+Opera har ikke Chromes `getAuthToken`, så her bruges en separat OAuth-klient:
+
+1. Åbn `opera://extensions`, aktivér Developer mode og vælg **Load unpacked** (i Edge: `edge://extensions`).
+2. Kopiér udvidelsens **Extension ID**. Redirect-URI'en bliver `https://<extension-id>.chromiumapp.org/`.
+3. I Google Cloud Console: opret en OAuth-klient af typen **Web application**, og tilføj redirect-URI'en fra trin 2 under *Authorized redirect URIs*.
+4. Indsæt klientens Client ID i `WEB_CLIENT_ID` øverst i `background.js`, og genindlæs udvidelsen.
+5. Åbn StudieSync, forbind Google Kalender, og log ind i det vindue, der åbner.
+
+Tip: Sæt en fast `key` i `manifest.json`, så Extension ID (og dermed redirect-URI) ikke ændrer sig mellem installationer.
 
 ## Google OAuth
 

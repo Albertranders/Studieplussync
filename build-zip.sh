@@ -14,11 +14,14 @@ OUT="studiesync-$VERSION.zip"
 rm -f "$OUT"
 
 # Pak kun de filer, udvidelsen skal bruge (ikke tests, README osv.)
-zip -r "$OUT" manifest.json background.js content.js gwt.js sync.js \
+zip -r "$OUT" manifest.json background.js auth.js content.js gwt.js sync.js \
   popup.html popup.css popup.js icons -x "*.DS_Store"
 
-# Advar hvis OAuth client_id stadig er pladsholderen
+# Advar hvis OAuth client_id stadig er pladsholderen (Chrome i manifestet, Opera/Edge i background.js)
 if grep -q "INSERT CLIENT ID HERE" manifest.json; then
   echo "ADVARSEL: manifest.json mangler stadig et rigtigt OAuth client_id." >&2
+fi
+if grep -q "INSERT WEB CLIENT ID HERE" background.js; then
+  echo "ADVARSEL: background.js mangler stadig et Web-Client ID (Opera/Edge)." >&2
 fi
 echo "Lavet: $OUT"

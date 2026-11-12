@@ -1,5 +1,11 @@
 // Service worker: styrer Google-login, kalenderkald og selve synkroniseringen.
 import { buildPlan, contentHash, eventBody, isSafeSchedule, isSuspiciousDrop, MANAGED_HASH, MANAGED_KEY, TIME_ZONE } from "./sync.js";
+import { buildAuthUrl, isTokenFresh, needsWebAuthFlow, parseAuthRedirect } from "./auth.js";
+
+// Client ID til Opera/Edge. Skal være en OAuth-klient af typen "Web application", og
+// redirect-URI'en fra `chrome.identity.getRedirectURL()` skal være tilføjet i Google Cloud Console.
+// Chrome bruger i stedet `oauth2.client_id` fra manifest.json.
+const WEB_CLIENT_ID = "INSERT WEB CLIENT ID HERE";
 
 const CALENDAR_NAME = "Studie+ skema";       // navnet på den kalender vi opretter
 const ALARM_NAME = "studiesync-auto-sync";   // navnet på den tilbagevendende alarm
@@ -25,8 +31,40 @@ function calendarUrl(path) {
 
 // --- Google-login ---
 
-// Henter et OAuth-token fra Chrome. `interactive` = må der vises et login-vindue?
+// Henter et OAuth-token. `interactive` = må der vises et login-vindue?
+// Chrome bruger sit eget login; Opera og Edge bruger et almindeligt OAuth-vindue.
 async function googleToken(interactive) {
+  if (needsWebAuthFlow(navigator.userAgent)) return webAuthFlowToken(interactive);
+  return chromeToken(interactive);
+}
+
+// Login via `launchWebAuthFlow` (virker i alle Chromium-browsere). Token gemmes, til det udløber.
+async function webAuthFlowToken(interactive) {
+  const { webToken } = await storageGet(["webToken"]);
+  if (isTokenFresh(webToken)) return webToken.token;
+  if (WEB_CLIENT_ID.startsWith("INSERT")) {
+    throw new Error("Mangler Web-Client ID til Opera/Edge. Se README.");
+  }
+  const state = crypto.randomUUID();
+  const url = buildAuthUrl({
+    clientId: WEB_CLIENT_ID,
+    redirectUri: chrome.identity.getRedirectURL(),
+    state,
+    interactive
+  });
+  let redirectUrl;
+  try {
+    redirectUrl = await chrome.identity.launchWebAuthFlow({ url, interactive });
+  } catch (error) {
+    throw new Error(error?.message || "Google-login mislykkedes.");
+  }
+  const fresh = parseAuthRedirect(redirectUrl, state);
+  await storageSet({ webToken: fresh });
+  return fresh.token;
+}
+
+// Login via Chromes indbyggede `getAuthToken` (kun Google Chrome)
+async function chromeToken(interactive) {
   return new Promise((resolve, reject) => {
     chrome.identity.getAuthToken({ interactive }, token => {
       const error = chrome.runtime.lastError;
