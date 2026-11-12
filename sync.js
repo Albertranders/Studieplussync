@@ -31,11 +31,35 @@ export function eventBody(lesson) {
   };
 }
 
-// "Hash" af indholdet. Her bruges selve event-teksten som fingeraftryk:
-// ændres noget i eventet, ændres strengen, og vi ved at det skal opdateres
+// Samler al indhold, der får et event til at skulle opdateres, i én streng
+function contentJson(lesson) {
+  return JSON.stringify(eventBody(lesson));
+}
+
+// 53-bit tekst-hash (cyrb53). Hurtig, uden async, og godt nok til at opdage ændringer.
+function cyrb53(text, seed) {
+  let h1 = 0xdeadbeef ^ seed, h2 = 0x41c6ce57 ^ seed;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text.charCodeAt(i);
+    h1 = Math.imul(h1 ^ ch, 2654435761);
+    h2 = Math.imul(h2 ^ ch, 1597334677);
+  }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  return 4294967296 * (2097151 & h2) + (h1 >>> 0);
+}
+
+// Kort fingeraftryk af indholdet (~28 tegn). Google afkorter stille egenskaber over 1024 tegn,
+// så hash'en må ikke indeholde selve teksten, ellers ser lektioner med lange lektier ud som
+// "ændrede" ved hver synkronisering.
 export function contentHash(lesson) {
-  const body = eventBody(lesson);
-  return JSON.stringify(body);
+  const json = contentJson(lesson);
+  return "v2:" + cyrb53(json, 1).toString(16) + cyrb53(json, 2).toString(16);
+}
+
+// Den gamle hash var hele event-teksten. Genkendes, så eksisterende events ikke opdateres unødigt.
+function matchesStoredHash(stored, lesson) {
+  return stored === contentHash(lesson) || stored === contentJson(lesson);
 }
 
 // Sammenligner ønsket skema med de events, der allerede ligger i kalenderen,
@@ -70,8 +94,7 @@ export function buildPlan(lessons, existing) {
       plan.create.push({ key, lesson }); // findes ikke endnu: opret
       continue;
     }
-    const hash = contentHash(lesson);
-    if (old.extendedProperties?.private?.[MANAGED_HASH] !== hash) {
+    if (!matchesStoredHash(old.extendedProperties?.private?.[MANAGED_HASH], lesson)) {
       plan.update.push({ id: old.id, key, lesson }); // indholdet er ændret: opdater
     } else {
       plan.unchanged += 1; // identisk: gør intet
