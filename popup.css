@@ -1,7 +1,9 @@
 /* Popup-udseende: grundopsætning, status, knapper og indstillinger */
 :root { color-scheme: light; font-family: Inter, system-ui, sans-serif; }
 * { box-sizing: border-box; }
-body { width: 330px; margin: 0; background: #f7f8fa; color: #17202a; }
+/* Runde kanter på selve popup-fladen (html og body rundes og beskæres) */
+html { border-radius: 16px; overflow: hidden; }
+body { width: 330px; margin: 0; background: #f7f8fa; color: #17202a; border-radius: 16px; overflow: hidden; }
 main { padding: 18px; }
 header { display: flex; align-items: center; gap: 11px; margin-bottom: 18px; }
 /* Det lille "S"-logo i toppen */
@@ -41,3 +43,5 @@ button:disabled { opacity: .6; cursor: wait; }
 .setting select:focus { outline: none; border-color: #17634c; box-shadow: 0 0 0 3px #d9eee5; }
 /* Hjælpetekst under indstillingen */
 .setting-help { margin-top: 3px; }
+/* Kreditering nederst i popup'en */
+.credit { text-align: center; margin-top: 14px; padding-top: 12px; border-top: 1px solid #e4e8ec; }
