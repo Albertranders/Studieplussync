@@ -76,3 +76,28 @@ test("protects against partial schedule extraction", () => {
   assert.equal(isSuspiciousDrop(12, 6), false);
   assert.equal(isSuspiciousDrop(3, 1), false);
 });
+
+test("lektion med meget lang lektie er uændret, når Google har afkortet egenskaber til 1024 tegn", () => {
+  const lesson = { id: "7", date: "2026-11-10", start: "08:15", end: "09:45", subject: "Dansk", homework: "x".repeat(3000) };
+  const hash = contentHash(lesson);
+  assert.ok(hash.length < 60);
+  // Simulerer Googles afkortning af værdier over 1024 tegn
+  const stored = hash.slice(0, 1024);
+  const existing = [{ id: "g1", extendedProperties: { private: { [MANAGED_KEY]: "7", [MANAGED_HASH]: stored } } }];
+  const plan = buildPlan([lesson], existing);
+  assert.equal(plan.unchanged, 1);
+  assert.equal(plan.update.length, 0);
+});
+
+test("hash ændrer sig, når indholdet ændrer sig", () => {
+  const a = { id: "1", date: "2026-11-10", start: "08:15", end: "09:45", subject: "Dansk", homework: "s. 42" };
+  assert.notEqual(contentHash(a), contentHash({ ...a, homework: "s. 43" }));
+  assert.equal(contentHash(a), contentHash({ ...a }));
+});
+
+test("gamle events med hele teksten som hash opdateres ikke unødigt", () => {
+  const lesson = { id: "2", date: "2026-11-10", start: "10:00", end: "11:30", subject: "Matematik", room: "A1" };
+  const legacy = JSON.stringify(eventBody(lesson));
+  const existing = [{ id: "g2", extendedProperties: { private: { [MANAGED_KEY]: "2", [MANAGED_HASH]: legacy } } }];
+  assert.equal(buildPlan([lesson], existing).unchanged, 1);
+});
