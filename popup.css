@@ -21,4 +21,23 @@ button:disabled { opacity: .6; cursor: wait; }
 .secondary { color: #17634c; background: #e3f0eb; }
 /* Små hjælpetekster i bunden */
 .foot { color: #77818b; font-size: 11px; line-height: 1.45; margin: 10px 1px 0; }
-\n.setting { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 14px 1px 2px; font-size: 13px; font-weight: 650; }\n.setting select { min-width: 105px; padding: 7px 9px; border: 1px solid #d8e0e5; border-radius: 8px; background: white; color: #17202a; font: inherit; }\n.setting-help { margin-top: 3px; }\n
+/* Indstilling: label til venstre, rullemenu til højre */
+.setting { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 14px 1px 2px; font-size: 13px; font-weight: 650; }
+/* Rullemenuen: egen pil i stedet for browserens standard, afrundet og med tydeligt fokus */
+.setting select {
+  min-width: 112px;
+  padding: 8px 30px 8px 11px;
+  border: 1px solid #d8e0e5;
+  border-radius: 9px;
+  background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%2317634c' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 11px center;
+  color: #17202a;
+  font: inherit;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  transition: border-color .15s, box-shadow .15s;
+}
+.setting select:hover { border-color: #b7c9c1; }
+.setting select:focus { outline: none; border-color: #17634c; box-shadow: 0 0 0 3px #d9eee5; }
+/* Hjælpetekst under indstillingen */
+.setting-help { margin-top: 3px; }
