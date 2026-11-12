@@ -1,11 +1,14 @@
+// Tests af synkroniseringslogikken i sync.js. Kør med: npm test  (eller: node --test)
 import test from "node:test";
 import assert from "node:assert/strict";
 import { buildPlan, contentHash, eventBody, isSafeSchedule, isSuspiciousDrop, MANAGED_HASH, MANAGED_KEY } from "../sync.js";
 
+// Eksempel-lektion, som testene bruger
 const lesson = {
   id: "l-1", date: "2026-11-10", start: "08:00", end: "09:30",
   subject: "Matematik", room: "A12", teacher: "MH", homework: "Side 42", note: ""
 };
+// Efterligner et Google-event, som vi tidligere har oprettet for en lektion
 function eventFor(item, id = "g-1") {
   return {
     id,
@@ -16,6 +19,7 @@ function eventFor(item, id = "g-1") {
   };
 }
 
+// Ny lektion, som ikke findes i kalenderen -> skal oprettes
 test("creates an event for a new lesson", () => {
   const plan = buildPlan([lesson], []);
   assert.equal(plan.create.length, 1);
@@ -23,12 +27,14 @@ test("creates an event for a new lesson", () => {
   assert.equal(plan.delete.length, 0);
 });
 
+// Identisk lektion i kalenderen -> skal ikke røres
 test("leaves an unchanged managed event alone", () => {
   const plan = buildPlan([lesson], [eventFor(lesson)]);
   assert.equal(plan.unchanged, 1);
   assert.equal(plan.create.length, 0);
 });
 
+// Skiftet lokale -> eventet skal opdateres (samme Google-id)
 test("updates an event when lesson details change", () => {
   const old = eventFor(lesson);
   const changed = { ...lesson, room: "B7" };
@@ -37,16 +43,19 @@ test("updates an event when lesson details change", () => {
   assert.equal(plan.update[0].id, "g-1");
 });
 
+// Kun vores egne events slettes; personlige events (uden vores nøgle) bliver liggende
 test("deletes only managed events no longer in the schedule", () => {
   const plan = buildPlan([], [eventFor(lesson), { id: "personal-event" }]);
   assert.deepEqual(plan.delete, ["g-1"]);
 });
 
+// To lektioner med samme nøgle giver kun ét event
 test("deduplicates duplicate lesson keys", () => {
   const plan = buildPlan([lesson, { ...lesson, room: "A13" }], []);
   assert.equal(plan.create.length, 1);
 });
 
+// Lektier giver blå farve (9), og lærer og lektier står i beskrivelsen
 test("colours lessons with homework and includes teacher and homework", () => {
   const body = eventBody(lesson);
   assert.equal(body.colorId, "9");
@@ -54,12 +63,14 @@ test("colours lessons with homework and includes teacher and homework", () => {
   assert.match(body.description, /Side 42/);
 });
 
+// Tomme eller ufuldstændige skemaer afvises
 test("rejects empty or malformed scraped schedules", () => {
   assert.equal(isSafeSchedule([]), false);
   assert.equal(isSafeSchedule([{ subject: "X" }]), false);
   assert.equal(isSafeSchedule([lesson]), true);
 });
 
+// Et pludseligt fald til under halvdelen af lektionerne (ved mindst 4) regnes som mistænkeligt
 test("protects against partial schedule extraction", () => {
   assert.equal(isSuspiciousDrop(12, 3), true);
   assert.equal(isSuspiciousDrop(12, 6), false);

@@ -1,19 +1,24 @@
+/* Popup-udseende: grundopsætning, status, knapper og indstillinger */
 :root { color-scheme: light; font-family: Inter, system-ui, sans-serif; }
 * { box-sizing: border-box; }
 body { width: 330px; margin: 0; background: #f7f8fa; color: #17202a; }
 main { padding: 18px; }
 header { display: flex; align-items: center; gap: 11px; margin-bottom: 18px; }
+/* Det lille "S"-logo i toppen */
 .mark { width: 38px; height: 38px; display: grid; place-items: center; border-radius: 11px; background: #d9eee5; color: #17634c; font-weight: 800; font-size: 19px; }
 h1 { font-size: 17px; margin: 0; }
 header p, .status p { margin: 3px 0 0; color: #68737d; font-size: 12px; }
+/* Statusboksen og den farvede prik (grå = ukendt, grøn = ok, rød = fejl) */
 .status { display: flex; gap: 10px; padding: 13px; background: white; border: 1px solid #e4e8ec; border-radius: 12px; margin-bottom: 13px; }
 .status strong { font-size: 13px; }
 .dot { width: 9px; height: 9px; border-radius: 50%; background: #9aa4ad; margin-top: 4px; flex: none; }
 .dot.good { background: #23865d; }
 .dot.bad { background: #c24b45; }
+/* Knapper: .primary = hovedhandling, .secondary = ekstra; deaktiveret mens de arbejder */
 button { width: 100%; border: 0; border-radius: 9px; padding: 11px 12px; font-size: 13px; font-weight: 650; cursor: pointer; margin: 5px 0; }
 button:disabled { opacity: .6; cursor: wait; }
 .primary { color: white; background: #17634c; }
 .secondary { color: #17634c; background: #e3f0eb; }
+/* Små hjælpetekster i bunden */
 .foot { color: #77818b; font-size: 11px; line-height: 1.45; margin: 10px 1px 0; }
 \n.setting { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 14px 1px 2px; font-size: 13px; font-weight: 650; }\n.setting select { min-width: 105px; padding: 7px 9px; border: 1px solid #d8e0e5; border-radius: 8px; background: white; color: #17202a; font: inherit; }\n.setting-help { margin-top: 3px; }\n

@@ -12,16 +12,20 @@
       <div class="mark">S</div>
       <div><h1>StudieSync</h1><p>Studie+ → Google Kalender</p></div>
     </header>
+    <!-- Statusfelt: farvet prik + besked. aria-live gør, at skærmlæsere oplæser ændringer -->
     <section class="status" aria-live="polite">
       <span id="dot" class="dot"></span>
       <div><strong id="state">Klar til synkronisering</strong><p id="detail">Log ind på Studie+ i en fane.</p></div>
     </section>
-    <label class="setting" for="weeks"><span>Indlæs skema   </span><select id="weeks"><option value="1">1 uge</option><option value="2">2 uger</option><option value="3">3 uger</option><option value="4" selected>4 uger</option><option value="5">5 uger</option><option value="6">6 uger</option><option value="8">8 uger</option><option value="10">10 uger</option><option value="12">12 uger</option></select></label>    <p class="foot setting-help">Perioden tælles fra mandag i den aktuelle uge.</p>    <button id="test" class="secondary">Test Studie+ forbindelsen</button>
+    <!-- Valg af antal uger, der indlæses fra Studie+ -->
+    <label class="setting" for="weeks"><span>Indlæs skema   </span><select id="weeks"><option value="1">1 uge</option><option value="2">2 uger</option><option value="3">3 uger</option><option value="4" selected>4 uger</option><option value="5">5 uger</option><option value="6">6 uger</option><option value="8">8 uger</option><option value="10">10 uger</option><option value="12">12 uger</option></select></label>    <p class="foot setting-help">Perioden tælles fra mandag i den aktuelle uge.</p>    <!-- Knapper (logikken ligger i popup.js) -->
+    <button id="test" class="secondary">Test Studie+ forbindelsen</button>
     <button id="connect" class="secondary">Forbind Google Kalender</button>
     <button id="sync" class="primary">Synkronisér nu</button>
     <p class="foot">Automatisk synkronisering kører hvert 30. minut, mens Chrome er åben.</p>
     <p class="foot" id="updated"></p>
   </main>
+  <!-- Scriptet står til sidst, så elementerne ovenfor findes, når det kører -->
   <script src="popup.js"></script>
 </body>
 </html>
