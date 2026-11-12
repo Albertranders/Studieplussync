@@ -104,7 +104,9 @@ async function googleRequest(token, path, options = {}) {
     const retryable = isRateLimited(response.status, body) || response.status >= 500;
     // Giv op hvis fejlen ikke kan genforsøges, eller vi har brugt alle forsøg
     if (!retryable || attempt >= MAX_TRIES) {
-      throw new Error(`Google Kalender (${response.status}): ${body.slice(0, 300)}`);
+      const failure = new Error(`Google Kalender (${response.status}): ${body.slice(0, 300)}`);
+      failure.status = response.status;
+      throw failure;
     }
     // Vent så længe Google beder om, ellers eksponentiel ventetid (maks. 30 sek.) + lidt tilfældighed
     const retryAfter = Number(response.headers.get("Retry-After"));
@@ -115,10 +117,20 @@ async function googleRequest(token, path, options = {}) {
 
 // --- Kalender og events ---
 
-// Finder id'et på vores kalender (gemt fra sidst) eller opretter den første gang
+// Finder id'et på vores kalender (gemt fra sidst) eller opretter den.
+// Den gemte kalender tjekkes, for den kan være slettet, eller være oprettet af en anden
+// OAuth-klient (fx Chrome vs. Opera), som scopet calendar.app.created ikke kan se (404).
 async function ensureCalendar(token) {
   const { calendarId } = await storageGet(["calendarId"]);
-  if (calendarId) return calendarId;
+  if (calendarId) {
+    try {
+      await googleRequest(token, `/calendars/${encodeURIComponent(calendarId)}`);
+      return calendarId;
+    } catch (error) {
+      if (error.status !== 404 && error.status !== 410) throw error;
+      await storageSet({ calendarId: null }); // findes ikke mere: opret en ny nedenfor
+    }
+  }
   const created = await googleRequest(token, "/calendars", {
     method: "POST",
     body: JSON.stringify({ summary: CALENDAR_NAME, timeZone: TIME_ZONE })
