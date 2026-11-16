@@ -39,13 +39,8 @@ async function googleToken(interactive) {
   return webAuthFlowToken(interactive);
 }
 
-// Login via `launchWebAuthFlow` (virker i alle Chromium-browsere). Token gemmes, til det udløber.
-async function webAuthFlowToken(interactive) {
-  const { webToken } = await storageGet(["webToken"]);
-  if (isTokenFresh(webToken)) return webToken.token;
-  if (CLIENT_ID.startsWith("INSERT")) {
-    throw new StudySyncError("E101", "Mangler Client ID. Udfyld googleClientId i config.js (se README).");
-  }
+// Beder Google om et nyt token. `interactive` = må der vises et login-vindue?
+async function requestToken(interactive) {
   const state = crypto.randomUUID();
   const url = buildAuthUrl({
     clientId: CLIENT_ID,
@@ -62,6 +57,24 @@ async function webAuthFlowToken(interactive) {
   const fresh = parseAuthRedirect(redirectUrl, state);
   await storageSet({ webToken: fresh });
   return fresh.token;
+}
+
+// Login via `launchWebAuthFlow` (virker i alle Chromium-browsere).
+// Tokenet gemmes, til det udløber (Google giver ca. 1 time). Når det er udløbet, prøver vi først
+// en STILLE fornyelse (uden vindue, virker hvis du allerede er logget ind på Google i browseren).
+// Kun hvis den fejler, og vi må vise noget (knaptryk), åbnes login-vinduet.
+async function webAuthFlowToken(interactive) {
+  const { webToken } = await storageGet(["webToken"]);
+  if (isTokenFresh(webToken)) return webToken.token;
+  if (CLIENT_ID.startsWith("INSERT")) {
+    throw new StudySyncError("E101", "Mangler Client ID. Udfyld googleClientId i config.js (se README).");
+  }
+  try {
+    return await requestToken(false);
+  } catch (error) {
+    if (!interactive) throw error;
+  }
+  return requestToken(true);
 }
 
 // --- Kald til Google Calendar med automatisk genforsøg ---
@@ -101,6 +114,7 @@ async function googleRequest(token, path, options = {}) {
       return response.json();
     }
     const body = await response.text();
+    if (response.status === 401) await storageSet({ webToken: null });   // afvist token: forny næste gang
     const retryable = isRateLimited(response.status, body) || response.status >= 500;
     // Giv op hvis fejlen ikke kan genforsøges, eller vi har brugt alle forsøg
     if (!retryable || attempt >= MAX_TRIES) {
