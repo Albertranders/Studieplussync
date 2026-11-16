@@ -2,7 +2,7 @@
 
 Sidst opdateret: 10. november 2026
 
-StudieSync er en Chrome-udvidelse, der læser dit skema fra Studie+ og lægger det i en separat kalender ("Studie+ skema") i din Google Kalender.
+StudieSync er en browserudvidelse (Chrome, Opera, Edge m.fl.), der læser dit skema fra Studie+ og lægger det i en separat kalender ("Studie+ skema") i din Google Kalender.
 
 ## Hvad udvidelsen behandler
 
@@ -22,7 +22,7 @@ Skemadata sendes direkte fra din browser til Google Calendar API og gemmes i din
 
 ## Sletning
 
-Fjern udvidelsen i Chrome for at slette de lokale indstillinger. Du kan også tilbagekalde adgangen på https://myaccount.google.com/permissions og slette kalenderen "Studie+ skema" i Google Kalender.
+Fjern udvidelsen i din browser for at slette de lokale indstillinger. Du kan også tilbagekalde adgangen på https://myaccount.google.com/permissions og slette kalenderen "Studie+ skema" i Google Kalender.
 
 ## Brug af data fra Googles API'er
 

@@ -15,7 +15,7 @@ StudieSync lægger dit skema fra Studie+ ind i din Google Kalender og holder det
 Sådan virker det:
 1. Log ind på Studie+ i Chrome som du plejer.
 2. Forbind din Google Kalender i StudieSync.
-3. Tryk "Synkronisér nu". Herefter synkroniseres automatisk hvert 30. minut, mens browseren er åben.
+3. Tryk "Synkronisér nu". Herefter synkroniseres automatisk (standard hvert 30. minut, kan ændres i config.js), mens browseren er åben.
 
 Det får du:
 • Lektioner med tid, lokale, lærer, lektier og noter i en separat kalender, "Studie+ skema"
@@ -36,7 +36,7 @@ Udvidelsen synkroniserer brugerens Studie+ skema til en separat Google Kalender.
 
 ## Begrundelse for tilladelser (Permission justifications)
 - **storage**: Gemmer kalenderens id, valgt antal uger og status for seneste synkronisering lokalt.
-- **alarms**: Starter automatisk synkronisering hvert 30. minut.
+- **alarms**: Starter automatisk synkronisering (standard hvert 30. minut, kan ændres i config.js).
 - **identity**: Google-login (OAuth) til at oprette og opdatere kalenderen "Studie+ skema" via scope `calendar.app.created`.
 - **Host permission https://all.uddataplus.dk/* og https://all.studieplus.dk/***: Læser skemaet fra brugerens egen åbne og indloggede Studie+-fane.
 - **Host permission https://www.googleapis.com/***: Kalder Google Calendar API for at oprette, ændre og slette events i udvidelsens egen kalender.

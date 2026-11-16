@@ -12,6 +12,13 @@ const testButton = document.getElementById("test");
 const updated = document.getElementById("updated");       // "Sidst kørt: ..."
 const weeksSelect = document.getElementById("weeks");     // rullemenu med antal uger
 
+// Teksten om automatisk synkronisering følger autoSyncMinutes i config.js
+(function showAutoSyncText() {
+  const minutes = Math.max(1, Math.round(Number(CONFIG.autoSyncMinutes) || 30));
+  const every = minutes === 1 ? "hvert minut" : `hvert ${minutes}. minut`;
+  document.getElementById("autosync").textContent = `Automatisk synkronisering kører ${every}, mens browseren er åben.`;
+})();
+
 // Viser en status i popup'en (tekst + grøn/rød prik)
 function setStatus(status) {
   if (!status) return;

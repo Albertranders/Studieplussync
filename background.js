@@ -278,9 +278,9 @@ async function syncNow(interactive = false) {
 
 // --- Hændelser ---
 
-// Ved installation: opret en alarm, der udløses hvert `autoSyncMinutes`. minut (config.js)
+// Ved installation: opret en alarm, der udløses hvert `autoSyncMinutes`. minut (config.js, standard 30)
 chrome.runtime.onInstalled.addListener(() => {
-  chrome.alarms.create(ALARM_NAME, { periodInMinutes: CONFIG.autoSyncMinutes });
+  chrome.alarms.create(ALARM_NAME, { periodInMinutes: Math.max(1, Number(CONFIG.autoSyncMinutes) || 30) });
 });
 // Når alarmen udløses: synkronisér i baggrunden (uden login-vindue, fejl ignoreres)
 chrome.alarms.onAlarm.addListener(alarm => {

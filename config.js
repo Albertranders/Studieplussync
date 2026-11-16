@@ -1,13 +1,11 @@
 // ============================================================================
 //  StudieSync – OPSÆTNING
-//  Alt du skal udfylde eller kan ændre, står i denne ene fil.
+//  Alle indstillinger står i denne ene fil. Ret, gem, og genindlæs udvidelsen på
+//  chrome://extensions (eller din browsers tilsvarende side). Der skal ikke køres
+//  nogen kommandoer.
 //  (Filen er almindelig JavaScript. Behold anførselstegnene "" omkring tekst.)
-// ============================================================================
 //
-//  SÅDAN GØR DU:
-//   1. Udfyld googleClientId herunder (afsnit 1).
-//   2. Gem filen.
-//   3. Genindlæs udvidelsen på chrome://extensions (eller opera://extensions).
+//  Du behøver normalt ikke ændre noget. Standardværdierne virker.
 //
 //  DET DER IKKE STÅR HER (fordi browseren kræver det i manifest.json):
 //   - De Studie+-adresser udvidelsen må køre på. Står under "host_permissions" og
@@ -19,19 +17,7 @@
 globalThis.STUDIESYNC_CONFIG = {
 
   // --------------------------------------------------------------------------
-  // 1. SKAL UDFYLDES: Google Client ID
-  //    Du får det af Albertranders (Discord) eller opretter det i Google Cloud Console.
-  // --------------------------------------------------------------------------
-
-  // Google OAuth Client ID – bruges i Chrome, Opera og Edge.
-  // Skal være en OAuth-klient af typen "Web application". Redirect-URI'en
-  //   https://<extension-id>.chromiumapp.org/
-  // skal være tilføjet i Google Cloud Console. Extension ID står på chrome://extensions
-  // (eller opera://extensions).
-  googleClientId: "644012646289-dpkv3hs4aqb1nirgk4075aoa6sjlslji.apps.googleusercontent.com",
-
-  // --------------------------------------------------------------------------
-  // 2. KAN ÆNDRES: Kalender og tid
+  // 1. KAN ÆNDRES: Kalender og tid
   // --------------------------------------------------------------------------
 
   // Navnet på den kalender, der oprettes i Google Kalender.
@@ -41,10 +27,11 @@ globalThis.STUDIESYNC_CONFIG = {
   timeZone: "Europe/Copenhagen",
 
   // --------------------------------------------------------------------------
-  // 3. KAN ÆNDRES: Synkronisering
+  // 2. KAN ÆNDRES: Synkronisering
   // --------------------------------------------------------------------------
 
-  // Hvor ofte der synkroniseres automatisk (i minutter). Chrome tillader min. 1.
+  // Hvor ofte der synkroniseres automatisk (i minutter, mindst 1).
+  // Teksten nederst i udvidelsens popup følger denne værdi.
   // Ændringen gælder først, når udvidelsen fjernes og indlæses igen.
   autoSyncMinutes: 30,
 
@@ -53,8 +40,15 @@ globalThis.STUDIESYNC_CONFIG = {
   maxWeeks: 12,      // øvre grænse (1 er altid nedre grænse)
 
   // --------------------------------------------------------------------------
-  // 4. AVANCERET: Rør kun ved, hvis noget er gået i stykker
+  // 3. AVANCERET: Rør kun ved, hvis noget er gået i stykker
   // --------------------------------------------------------------------------
+
+  // Google OAuth Client ID – bruges i Chrome, Opera, Edge og andre Chromium-browsere.
+  // Skal være en OAuth-klient af typen "Web application". Redirect-URI'en
+  //   https://haknapnmhoblbadaiaehbkcniohlcifd.chromiumapp.org/
+  // (udvidelsens faste Extension ID) skal være tilføjet i Google Cloud Console.
+  // Ret kun dette, hvis du bruger dit eget Google-projekt.
+  googleClientId: "644012646289-dpkv3hs4aqb1nirgk4075aoa6sjlslji.apps.googleusercontent.com",
 
   // Navnet på Studie+'s skema-modul (indgår i adresserne til serverkaldene).
   studiePlusModule: "skema",
