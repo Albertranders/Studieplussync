@@ -81,7 +81,3 @@ Automatisk synkronisering sker, mens browseren kører (se `autoSyncMinutes`). St
 Udvidelsen bruger kun adgangen `calendar.app.created`, så den kun administrerer sin egen "Studie+ skema"-kalender og ikke dine andre kalendere. Du kan altid tilbagekalde adgangen på https://myaccount.google.com/permissions. Læs mere i `PRIVACY.md`.
 
 Privat deling fjerner ikke Googles OAuth-krav. Uverificerede apps kan vise en advarsel eller være underlagt brugerbegrænsninger: https://support.google.com/cloud/answer/13464323
-
-## Fast Extension ID
-
-`manifest.json` har en `key`, så udvidelsen altid får samme Extension ID, `haknapnmhoblbadaiaehbkcniohlcifd`, i alle browsere. Redirect-URI'en til Google Cloud Console er derfor `https://haknapnmhoblbadaiaehbkcniohlcifd.chromiumapp.org/`.
