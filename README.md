@@ -54,6 +54,7 @@ Alle indstillinger står i **`config.js`**. Åbn filen i en teksteditor, ret, ge
 |---|---|---|
 | `calendarName` | `Studie+ skema` | Navnet på kalenderen i Google Kalender |
 | `timeZone` | `Europe/Copenhagen` | Tidszone for lektionerne |
+| `developerContact` | `Discord: Albertranders` | Kontaktoplysning, der vises sammen med fejlkoder |
 | `autoSyncMinutes` | `30` | Hvor ofte der synkroniseres automatisk (minutter). Teksten i popup'en følger denne værdi |
 | `defaultWeeks` | `4` | Antal uger der hentes, før du vælger noget i popup'en |
 | `maxWeeks` | `12` | Øvre grænse for antal uger |
@@ -75,6 +76,71 @@ Udvidelsen bruger dit eksisterende login i Studie+. Den beder ikke om adgangskod
 Studie+ har ikke et officielt API, så hentningen bygger på uofficielle serverkald, som Studie+ kan ændre. Hvis skemaet ikke kan læses sikkert, stopper synkroniseringen uden at ændre kalenderen.
 
 Automatisk synkronisering sker, mens browseren kører (se `autoSyncMinutes`). Studie+-fanen skal være åben og logget ind.
+
+## Fejlkoder
+
+Når noget går galt, viser udvidelsen en fejlkode, fx **Fejl E301**, og beder dig kontakte udvikleren. Oplys altid fejlkoden og den tekniske tekst, der står under den. Slå koden op herunder for at se, om du selv kan løse det.
+
+**Google-login og opsætning**
+
+| Kode | Betydning | Hvad kan jeg selv gøre? |
+|---|---|---|
+| E101 | Google Client ID mangler. | Udvidelsen er sat forkert op. Kontakt udvikleren. |
+| E102 | Google-login blev afbrudt eller kunne ikke åbnes. | Prøv at forbinde igen, og gennemfør login i vinduet. |
+| E103 | Google afviste login. | Tjek, at din Gmail er godkendt af udvikleren (se Adgang). |
+| E104 | Ugyldigt svar fra Google-login. | Prøv at forbinde igen. |
+| E105 | Google gav ikke adgang til kalenderen. | Prøv at forbinde igen, og tillad adgangen til Google Kalender. |
+
+**Google Kalender**
+
+| Kode | Betydning | Hvad kan jeg selv gøre? |
+|---|---|---|
+| E201 | Google afviste adgangen (login udløbet). | Vælg Forbind Google Kalender, og log ind igen. |
+| E202 | Google nægtede adgang til kalenderen. | Tjek, at din Gmail er godkendt af udvikleren, og at du har givet tilladelse. |
+| E203 | Kalenderen eller en begivenhed blev ikke fundet. | Prøv at synkronisere igen. Kommer fejlen igen, så slet kalenderen "Studie+ skema" i Google Kalender og synkronisér. |
+| E204 | Google begrænsede antallet af kald. | Vent et par minutter, og synkronisér igen. |
+| E205 | Google Kalender har en serverfejl. | Vent lidt, og prøv igen. |
+| E206 | Uventet fejl fra Google Kalender. | Prøv igen. Kommer fejlen igen, så kontakt udvikleren. |
+
+**Forbindelse til Studie+**
+
+| Kode | Betydning | Hvad kan jeg selv gøre? |
+|---|---|---|
+| E301 | Ingen åben Studie+-fane. Åbn Studie+ og log ind. | Åbn Studie+ (all.studieplus.dk eller all.uddataplus.dk), log ind, og prøv igen. |
+| E302 | Kan ikke kontakte Studie+-siden. | Genindlæs Studie+-fanen, og prøv igen. |
+| E303 | Udvidelsen blev ikke indlæst i Studie+-fanen. | Genindlæs Studie+-fanen, og prøv igen. |
+| E304 | Studie+ svarede med en fejl, da siden skulle hentes. | Log ind på Studie+ igen, og prøv igen. |
+| E305 | Studie+'s version eller skematjeneste kunne ikke findes. | Studie+ er sandsynligvis opdateret. Kontakt udvikleren. |
+| E306 | Studie+ afviste skemakaldet (ikke logget ind). | Log ind på Studie+ igen i fanen, og prøv igen. |
+| E307 | Studie+ svarede med en fejl på skemakaldet. | Prøv igen lidt senere. Kommer fejlen igen, så kontakt udvikleren. |
+
+**Tolkning af Studie+-data**
+
+| Kode | Betydning | Hvad kan jeg selv gøre? |
+|---|---|---|
+| E401 | Studie+ svarede i et uventet format. | Studie+ er sandsynligvis opdateret. Kontakt udvikleren. |
+| E402 | Studie+-dataene var beskadigede eller ufuldstændige. | Prøv igen. Kommer fejlen igen, så kontakt udvikleren. |
+| E403 | Studie+ sendte en ukendt datatype. | Studie+ er sandsynligvis opdateret. Kontakt udvikleren. |
+| E404 | Skemaet indeholdt en ugyldig lektion. | Kontakt udvikleren. |
+| E405 | Studie+ svarede med en serverfejl. | Log ind på Studie+ igen, og prøv igen. Kommer fejlen igen, så kontakt udvikleren. |
+| E406 | Studie+ returnerede ingen lektioner for perioden. | Tjek, at du har lektioner i perioden, eller vælg flere uger i udvidelsen. |
+| E407 | Kunne ikke finde datooverskrifterne i skemaet. | Kontakt udvikleren. |
+
+**Beskyttelse af kalenderen**
+
+| Kode | Betydning | Hvad kan jeg selv gøre? |
+|---|---|---|
+| E501 | Skemaet kunne ikke valideres. Kalenderen er ikke ændret. | Prøv igen. Kommer fejlen igen, så kontakt udvikleren. |
+| E502 | Studie+ viste markant færre lektioner end kalenderen. Synkroniseringen blev stoppet for at beskytte kalenderen. | Genindlæs Studie+, og prøv igen. Kommer fejlen igen, så kontakt udvikleren. |
+
+**Andet**
+
+| Kode | Betydning | Hvad kan jeg selv gøre? |
+|---|---|---|
+| E901 | Netværksfejl. Kunne ikke oprette forbindelse. | Tjek din internetforbindelse, og prøv igen. |
+| E999 | Ukendt fejl. | Kontakt udvikleren, og oplys fejlkoden og den tekniske tekst. |
+
+Kalenderen bliver aldrig ændret, når en fejl i E3xx, E4xx eller E5xx stopper en synkronisering.
 
 ## Google-adgang og privatliv
 

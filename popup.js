@@ -55,7 +55,7 @@ connectButton.addEventListener("click", async () => {
   connectButton.disabled = true;
   const result = await message("STUDIESYNC_CONNECT");
   connectButton.disabled = false;
-  setStatus(result?.ok ? { ok: true, message: "Google Kalender er forbundet." } : { ok: false, message: result?.message });
+  setStatus(result?.ok ? { ok: true, message: "Google Kalender er forbundet." } : result);
 });
 
 // "Synkronisér nu": henter skemaet og opdaterer kalenderen

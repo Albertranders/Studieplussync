@@ -17,7 +17,7 @@
 globalThis.STUDIESYNC_CONFIG = {
 
   // --------------------------------------------------------------------------
-  // 1. KAN ÆNDRES: Kalender og tid
+  // 1. KAN ÆNDRES: Kalender, tid og kontakt
   // --------------------------------------------------------------------------
 
   // Navnet på den kalender, der oprettes i Google Kalender.
@@ -25,6 +25,9 @@ globalThis.STUDIESYNC_CONFIG = {
 
   // Tidszone for lektionerne (IANA-navn, fx "Europe/Copenhagen").
   timeZone: "Europe/Copenhagen",
+
+  // Hvordan brugerne kan kontakte dig. Vises i popup'en sammen med fejlkoden.
+  developerContact: "Discord: Albertranders",
 
   // --------------------------------------------------------------------------
   // 2. KAN ÆNDRES: Synkronisering

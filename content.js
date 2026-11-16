@@ -107,7 +107,7 @@
   function readVisibleLessons() {
     const reference = referenceDate();
     const columns = readDateColumns(reference);
-    if (!columns.length) throw new Error("Kunne ikke finde datooverskrifterne i Studie+ skemaet.");
+    if (!columns.length) throw new StudySyncError("E407", "Kunne ikke finde datooverskrifterne i Studie+ skemaet.");
     // Lektionsboksene har en genereret CSS-klasse (kan ændre sig, når Studie+ opdateres)
     const nodes = [...document.querySelectorAll("g.O2HAI5C-h-b")];
     const lessons = [];
@@ -141,7 +141,7 @@
 
   // Tester forbindelsen ved at hente skemaet og tælle lektionerne
   async function testConnection(weeks) {
-    if (!window.StudySyncGwt) throw new Error("GWT-modulet blev ikke indlæst. Genindlæs Studie+ fanen.");
+    if (!window.StudySyncGwt) throw new StudySyncError("E303", "GWT-modulet blev ikke indlæst. Genindlæs Studie+ fanen.");
     const range = scheduleRange(weeks);
     const result = await window.StudySyncGwt.fetchSchedule(range.start, range.end);
     return { ...result, lessonCount: result.lessons?.length || 0, dateRange: range };
@@ -150,7 +150,7 @@
   // Henter lektionerne via GWT-modulet. Fejl samles i `gwt`, så kalderen kan vise dem
   async function extractLessons(weeks) {
     const range = scheduleRange(weeks);
-    let gwt = { ok: false, error: "Ingen lektioner at hente." };
+    let gwt = { ok: false, error: new StudySyncError("E303", "GWT-modulet blev ikke indlæst.").message };
     if (window.StudySyncGwt) {
       try { gwt = await window.StudySyncGwt.fetchSchedule(range.start, range.end); }
       catch (error) { gwt = { ok: false, error: String(error?.message || error) }; }
@@ -170,7 +170,7 @@
     extractLessons(message.weeks).then(({ lessons, gwt, dateRange }) => {
       // Gyldigt = mindst én lektion, og alle har dato, tider og fag
       const valid = Array.isArray(lessons) && lessons.length > 0 && lessons.every(l => l.date && l.start && l.end && l.subject);
-      sendResponse({ ok: valid && gwt.ok === true, lessons, gwt, pageTitle: document.title, pageUrl: location.href, count: lessons.length, dateRange, error: valid && gwt.ok === true ? "" : (gwt.error || "GWT-dataene kunne ikke valideres. Synkronisering er sat på pause.") });
+      sendResponse({ ok: valid && gwt.ok === true, lessons, gwt, pageTitle: document.title, pageUrl: location.href, count: lessons.length, dateRange, error: valid && gwt.ok === true ? "" : (gwt.error || new StudySyncError("E501", "GWT-dataene kunne ikke valideres. Synkronisering er sat på pause.").message) });
     }).catch(error => sendResponse({ ok: false, lessons: [], error: String(error?.message || error) }));
     return true;
   });

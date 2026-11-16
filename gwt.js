@@ -21,25 +21,25 @@
         credentials: "include",
         cache: "no-store"
       });
-      if (!loader.ok) throw new Error(`Studie+ loader HTTP ${loader.status}`);
+      if (!loader.ok) throw new StudySyncError("E304", `Studie+ loader HTTP ${loader.status}`);
       const loaderText = await loader.text();
       // Permutationen er en 32 tegn lang hex-streng i loaderen
       const permutation = loaderText.match(/='([A-F0-9]{32})'/)?.[1];
-      if (!permutation) throw new Error("Kunne ikke finde Studie+ GWT-versionen.");
+      if (!permutation) throw new StudySyncError("E305", "Kunne ikke finde Studie+ GWT-versionen.");
 
       // Trin 2: hent den version af klientkoden, der hører til permutationen
       const cache = await fetch(`${moduleBase}${permutation}.cache.js`, {
         credentials: "include",
         cache: "no-store"
       });
-      if (!cache.ok) throw new Error(`Studie+ cache HTTP ${cache.status}`);
+      if (!cache.ok) throw new StudySyncError("E304", `Studie+ cache HTTP ${cache.status}`);
       const cacheText = await cache.text();
       // Find alle service-hashes (navn + 32 tegn hex) og gør dem til et opslag: { skemaservice: "..." }
       const hashes = Object.fromEntries(
         [...cacheText.matchAll(/,'(\w+service)','([A-F0-9]{32})'/g)]
           .map(match => [match[1], match[2]])
       );
-      if (!hashes.skemaservice) throw new Error("Studie+ skemaservice blev ikke fundet.");
+      if (!hashes.skemaservice) throw new StudySyncError("E305", "Studie+ skemaservice blev ikke fundet.");
       return { moduleBase, permutation, serviceHash: hashes.skemaservice };
     // Ved fejl nulstilles cachen, så næste kald prøver forfra
     })().catch(error => {
@@ -63,7 +63,7 @@
     const chunks = [];
     while (source.length) {
       const start = source.indexOf("[");
-      if (start < 0) throw new Error("Ugyldigt GWT-svar.");
+      if (start < 0) throw new StudySyncError("E401", "Ugyldigt GWT-svar.");
       let depth = 0;
       let inString = false;
       let escaped = false;
@@ -83,12 +83,12 @@
           if (depth === 0) { end = i + 1; break; }
         }
       }
-      if (end < 0) throw new Error("Ufuldstændigt GWT-svar.");
+      if (end < 0) throw new StudySyncError("E401", "Ufuldstændigt GWT-svar.");
       chunks.push(JSON.parse(source.slice(start, end)));
       source = source.slice(end).trim();
       if (!source) break;
       if (!source.startsWith(".concat(") || !source.endsWith(")")) {
-        throw new Error("Ukendt GWT-svarformat.");
+        throw new StudySyncError("E401", "Ukendt GWT-svarformat.");
       }
       source = source.slice(8, -1).trim();
     }
@@ -104,11 +104,11 @@
   // felter vi ikke bruger, læses blot for at springe dem over.
   function parseScheduleData(decoded) {
     const strings = decoded.at(-3), data = decoded.slice(0, -3);
-    if (!Array.isArray(strings) || !Array.isArray(data)) throw new Error("Ugyldigt GWT-datasæt.");
+    if (!Array.isArray(strings) || !Array.isArray(data)) throw new StudySyncError("E401", "Ugyldigt GWT-datasæt.");
     let pos = data.length;  // læsepositionen; tæller nedad
     const objects = [];     // allerede læste objekter, så henvisninger (negative tal) kan genbruge dem
     // Læs næste rå værdi (bagfra)
-    const pop = () => { if (--pos < 0) throw new Error("GWT-parseren løb tør for data."); return data[pos]; };
+    const pop = () => { if (--pos < 0) throw new StudySyncError("E402", "GWT-parseren løb tør for data."); return data[pos]; };
     // Læs en tekst: tallet er et 1-baseret indeks i strengtabellen (0 = tom/null)
     const readString = () => { const n=Number(pop()); return Number.isInteger(n)&&n>0&&n<=strings.length?strings[n-1]:""; };
     // Læs en sand/falsk-værdi
@@ -117,8 +117,8 @@
     // positivt tal = typenavn i strengtabellen, som sendes videre til deserialize()
     const readObject = () => {
       const n=Number(pop());
-      if (!Number.isInteger(n)) throw new Error("Ugyldig objektreference i GWT-data.");
-      if (n<0) { const value=objects[-(n+1)]; if(value===undefined) throw new Error("Ugyldig GWT-objektreference."); return value; }
+      if (!Number.isInteger(n)) throw new StudySyncError("E402", "Ugyldig objektreference i GWT-data.");
+      if (n<0) { const value=objects[-(n+1)]; if(value===undefined) throw new StudySyncError("E402", "Ugyldig GWT-objektreference."); return value; }
       if (n===0) return null;
       const marker=strings[n-1];
       if(typeof marker!=="string"||!marker.includes("/")) return n;
@@ -130,11 +130,11 @@
       return value;
     };
     // Læs en liste (med loft på 10.000 elementer som sikkerhedsgrænse)
-    const readList=()=>{const count=Number(pop());if(!Number.isInteger(count)||count<0||count>10000)throw new Error("Ugyldigt antal elementer i GWT-liste.");return Array.from({length:count},()=>readObject());};
+    const readList=()=>{const count=Number(pop());if(!Number.isInteger(count)||count<0||count>10000)throw new StudySyncError("E402", "Ugyldigt antal elementer i GWT-liste.");return Array.from({length:count},()=>readObject());};
     // Læs et opslag (nøgle -> værdi), samme sikkerhedsloft
-    const readMap=()=>{const count=Number(pop());if(!Number.isInteger(count)||count<0||count>10000)throw new Error("Ugyldigt antal elementer i GWT-kort.");const map=new Map();for(let i=0;i<count;i++)map.set(readObject(),readObject());return map;};
+    const readMap=()=>{const count=Number(pop());if(!Number.isInteger(count)||count<0||count>10000)throw new StudySyncError("E402", "Ugyldigt antal elementer i GWT-kort.");const map=new Map();for(let i=0;i<count;i++)map.set(readObject(),readObject());return map;};
     // Læs en dato: år (fra 1900), måned, dag, time, minut, sekund
-    const readDate=()=>{pop();const year=Number(pop())+1900,month=Number(pop()),day=Number(pop()),hour=Number(pop()),minute=Number(pop()),second=Number(pop());const d=new Date(year,month,day,hour,minute,second);if(Number.isNaN(d.getTime()))throw new Error("Ugyldig dato i GWT-data.");return d;};
+    const readDate=()=>{pop();const year=Number(pop())+1900,month=Number(pop()),day=Number(pop()),hour=Number(pop()),minute=Number(pop()),second=Number(pop());const d=new Date(year,month,day,hour,minute,second);if(Number.isNaN(d.getTime()))throw new StudySyncError("E402", "Ugyldig dato i GWT-data.");return d;};
     // Læs en enum (opremsningsværdi); vi bruger ikke indholdet
     const readEnum=()=>({enumValue:pop()});
     // Aktivitet (feltet `d` bruges som klassenavn); lokale; medarbejder (lærer) - feltet `navn` bruges
@@ -203,7 +203,7 @@
         case "dk.uddata.model.skemanoter.SkemaNote2":return readNote();
         case "dk.uddata.model.skemanoter.Note":return {objectId:readObject(),user:readObject(),note:readObject()};
         // "Bogus" afvises udtrykkeligt
-        case "dk.uddata.model.skema.Bogus":throw new Error("Ukendt GWT-datatype: "+name);
+        case "dk.uddata.model.skema.Bogus":throw new StudySyncError("E403", "Ukendt GWT-datatype: "+name);
         // Typer vi ikke bruger indholdet af (fravær, årsager m.m.): felterne læses bare for at springe dem over
         case "dk.uddata.model.skema.Aarstyp":
           readObject();readObject();pop();readObject();readString();readObject();return {};
@@ -231,18 +231,18 @@
         case "dk.uddata.model.skema.SkemaTools$RegModel":
         case "dk.uddata.model.skema.SkemaTools$RegStatus":return readEnum();
         // Alt andet er ukendt: stop af sikkerhedshensyn
-        default:throw new Error("Ukendt GWT-datatype: "+name+". Synkronisering er stoppet af sikkerhedshensyn.");
+        default:throw new StudySyncError("E403", "Ukendt GWT-datatype: "+name+". Synkronisering er stoppet af sikkerhedshensyn.");
       }
     };
     // Start fra roden: det yderste objekt skal være en liste af lektioner
     const root=readObject();
-    if(!Array.isArray(root))throw new Error("GWT-dataene indeholdt ikke en gyldig lektionsliste.");
+    if(!Array.isArray(root))throw new StudySyncError("E404", "GWT-dataene indeholdt ikke en gyldig lektionsliste.");
     // Omsæt hver lektion til det format resten af udvidelsen bruger
     // (dato "ÅÅÅÅ-MM-DD", tider "TT:MM", lærere og lokaler som kommasepareret tekst)
     return root.map(lesson=>{
       // Bookinger (fx "Anden aktivitet", "Elevråd") har intet fag, kun en aktivitetstype.
       if(!lesson.subject)lesson.subject=lesson.className||(lesson.note&&lesson.note.split("\n")[0].trim())||"Booking";
-      if(!(lesson.start instanceof Date)||!(lesson.end instanceof Date))throw new Error("En lektion mangler dato eller tid. Synkronisering er stoppet.");
+      if(!(lesson.start instanceof Date)||!(lesson.end instanceof Date))throw new StudySyncError("E404", "En lektion mangler dato eller tid. Synkronisering er stoppet.");
       const date=[lesson.start.getFullYear(),String(lesson.start.getMonth()+1).padStart(2,"0"),String(lesson.start.getDate()).padStart(2,"0")].join("-");
       const start=String(lesson.start.getHours()).padStart(2,"0")+":"+String(lesson.start.getMinutes()).padStart(2,"0");
       const end=String(lesson.end.getHours()).padStart(2,"0")+":"+String(lesson.end.getMinutes()).padStart(2,"0");
@@ -281,7 +281,7 @@
     });
 
     const body = await response.text();
-    if (!response.ok) throw new Error(`Studie+ skemakald HTTP ${response.status}`);
+    if (!response.ok) throw new StudySyncError(response.status === 401 || response.status === 403 ? "E306" : "E307", `Studie+ skemakald HTTP ${response.status}`);
     // "//EX" betyder, at serveren svarede med en fejl; forsøg at udtrække en læsbar fejltekst
     if (body.startsWith("//EX")) {
       let detail = "Ukendt serverfejl.";
@@ -300,21 +300,21 @@
       } catch {
         detail = body.slice(4, 184).replace(/[\\r\\n\\t]+/g, " ");
       }
-      throw new Error("Studie+ GWT-fejl: " + detail);
+      throw new StudySyncError("E405", "Studie+ GWT-fejl: " + detail);
     }
     // Et gyldigt svar skal starte med "//OK"
     if (!body.startsWith("//OK")) {
-      throw new Error("Studie+ returnerede ikke et gyldigt skemasvar.");
+      throw new StudySyncError("E401", "Studie+ returnerede ikke et gyldigt skemasvar.");
     }
 
     // Pak svaret ud, kontrollér formen, og tolk det til lektioner
     const decoded = decodePayload(body);
     if (!Array.isArray(decoded) || decoded.length < 3 || !Array.isArray(decoded.at(-3))) {
-      throw new Error("Studie+ skemasvaret havde et ukendt format.");
+      throw new StudySyncError("E401", "Studie+ skemasvaret havde et ukendt format.");
     }
 
     const lessons = parseScheduleData(decoded);
-    if (!lessons.length) throw new Error("Studie+ returnerede ingen lektioner for perioden.");
+    if (!lessons.length) throw new StudySyncError("E406", "Studie+ returnerede ingen lektioner for perioden.");
     return { ok: true, lessons, responsePrefix: "//OK", stringCount: decoded.at(-3).length, dataCount: decoded.length - 3 };
   }
 

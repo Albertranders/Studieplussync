@@ -1,6 +1,7 @@
 // Service worker: styrer Google-login, kalenderkald og selve synkroniseringen.
 import { buildPlan, contentHash, eventBody, isSafeSchedule, isSuspiciousDrop, MANAGED_HASH, MANAGED_KEY, TIME_ZONE } from "./sync.js";
 import "./config.js";   // opsætning (se config.js)
+import "./errors.js";   // fejlkoder (se errors.js)
 import { buildAuthUrl, isTokenFresh, parseAuthRedirect } from "./auth.js";
 
 // Client ID (fra config.js). Skal være en OAuth-klient af typen "Web application", og
@@ -43,7 +44,7 @@ async function webAuthFlowToken(interactive) {
   const { webToken } = await storageGet(["webToken"]);
   if (isTokenFresh(webToken)) return webToken.token;
   if (CLIENT_ID.startsWith("INSERT")) {
-    throw new Error("Mangler Client ID. Udfyld googleClientId i config.js (se README).");
+    throw new StudySyncError("E101", "Mangler Client ID. Udfyld googleClientId i config.js (se README).");
   }
   const state = crypto.randomUUID();
   const url = buildAuthUrl({
@@ -56,7 +57,7 @@ async function webAuthFlowToken(interactive) {
   try {
     redirectUrl = await chrome.identity.launchWebAuthFlow({ url, interactive });
   } catch (error) {
-    throw new Error(error?.message || "Google-login mislykkedes.");
+    throw new StudySyncError("E102", error?.message || "Google-login mislykkedes.");
   }
   const fresh = parseAuthRedirect(redirectUrl, state);
   await storageSet({ webToken: fresh });
@@ -72,6 +73,16 @@ const MAX_TRIES = CONFIG.maxTries;          // maks. antal forsøg pr. kald
 // Er svaret en "du kalder for hurtigt"-fejl fra Google?
 function isRateLimited(status, body) {
   return status === 429 || (status === 403 && /rate\s*limit|quota/i.test(body));
+}
+
+// Vælger fejlkode ud fra Googles svar
+function googleErrorCode(status, body) {
+  if (isRateLimited(status, body)) return "E204";
+  if (status === 401) return "E201";
+  if (status === 403) return "E202";
+  if (status === 404 || status === 410) return "E203";
+  if (status >= 500) return "E205";
+  return "E206";
 }
 
 // Udfører ét kald mod Google Calendar. Prøver igen ved rate limit og serverfejl (5xx)
@@ -93,7 +104,7 @@ async function googleRequest(token, path, options = {}) {
     const retryable = isRateLimited(response.status, body) || response.status >= 500;
     // Giv op hvis fejlen ikke kan genforsøges, eller vi har brugt alle forsøg
     if (!retryable || attempt >= MAX_TRIES) {
-      const failure = new Error(`Google Kalender (${response.status}): ${body.slice(0, 300)}`);
+      const failure = new StudySyncError(googleErrorCode(response.status, body), `Google Kalender (${response.status}): ${body.slice(0, 300)}`);
       failure.status = response.status;
       throw failure;
     }
@@ -171,8 +182,8 @@ function sendTabMessage(tab, type, weeks) {
   return new Promise((resolve, reject) => {
     chrome.tabs.sendMessage(tab.id, { type, weeks }, response => {
       const error = chrome.runtime.lastError;
-      if (error) reject(new Error("Åbn Studie+ skemaet, og genindlæs siden. " + error.message));
-      else if (!response?.ok) reject(new Error(response?.error || "Kunne ikke læse Studie+ svaret."));
+      if (error) reject(new StudySyncError("E302", error.message));
+      else if (!response?.ok) reject(response?.error ? new Error(response.error) : new StudySyncError("E302", "Tomt svar fra Studie+-siden."));
       else resolve(response);
     });
   });
@@ -187,7 +198,7 @@ async function readSchedule(tab) {
 async function testConnection() {
   try {
     const tab = await findStudyPlusTab();
-    if (!tab) throw new Error("Åbn Studie+ skemaet i Chrome, og log ind først.");
+    if (!tab) throw new StudySyncError("E301");
     const result = await sendTabMessage(tab, "STUDIESYNC_TEST_CONNECTION", await scheduleWeeks());
     const status = {
       ok: true,
@@ -197,7 +208,7 @@ async function testConnection() {
     await sendStatus(status);
     return status;
   } catch (error) {
-    const status = { ok: false, message: "Studie+ testen mislykkedes.", detail: error?.message || String(error) };
+    const status = STUDIESYNC_ERRORS.toStatus(error);
     await sendStatus(status);
     return status;
   }
@@ -240,11 +251,11 @@ async function applyPlan(token, calendarId, plan) {
 async function syncNow(interactive = false) {
   try {
     const tab = await findStudyPlusTab();
-    if (!tab) throw new Error("Åbn Studie+ i Chrome og log ind først.");
+    if (!tab) throw new StudySyncError("E301");
     const result = await readSchedule(tab);
     const lessons = result.lessons;
     // Går noget galt her, stopper vi, før kalenderen røres
-    if (!isSafeSchedule(lessons)) throw new Error("Skemaet kunne ikke valideres. Kalenderen er ikke ændret.");
+    if (!isSafeSchedule(lessons)) throw new StudySyncError("E501", "Skemaet kunne ikke valideres. Kalenderen er ikke ændret.");
 
     const token = await googleToken(interactive);
     const calendarId = await ensureCalendar(token);
@@ -256,7 +267,7 @@ async function syncNow(interactive = false) {
     const existing = await getManagedEvents(token, calendarId, start, end);
     // Beskyt mod en delvis hentning, der ellers ville slette mange events
     if (isSuspiciousDrop(existing.length, lessons.length)) {
-      throw new Error("Studie+ viste markant færre lektioner end kalenderen for de samme datoer. For at beskytte dine kalenderdata blev synkroniseringen stoppet.");
+      throw new StudySyncError("E502", `Studie+: ${lessons.length} lektioner, kalender: ${existing.length}.`);
     }
     const plan = buildPlan(lessons, existing);
     await applyPlan(token, calendarId, plan);
@@ -270,7 +281,7 @@ async function syncNow(interactive = false) {
     return status;
   } catch (error) {
     // Gem fejlen som status (så popup'en kan vise den) og kast den videre
-    const status = { ok: false, message: error?.message || String(error) };
+    const status = STUDIESYNC_ERRORS.toStatus(error);
     await sendStatus(status);
     throw error;
   }
@@ -300,12 +311,12 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   }
   // Synkronisér nu (med mulighed for Google-login)
   if (message?.type === "STUDIESYNC_SYNC") {
-    syncNow(true).then(sendResponse).catch(error => sendResponse({ ok: false, message: error.message }));
+    syncNow(true).then(sendResponse).catch(error => sendResponse(STUDIESYNC_ERRORS.toStatus(error)));
     return true;
   }
   // Forbind Google Kalender (viser login-vindue hvis nødvendigt)
   if (message?.type === "STUDIESYNC_CONNECT") {
-    googleToken(true).then(() => sendResponse({ ok: true })).catch(error => sendResponse({ ok: false, message: error.message }));
+    googleToken(true).then(() => sendResponse({ ok: true })).catch(error => sendResponse(STUDIESYNC_ERRORS.toStatus(error)));
     return true;
   }
 });

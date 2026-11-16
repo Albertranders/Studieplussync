@@ -42,6 +42,7 @@
       ],
       "js": [
         "config.js",
+        "errors.js",
         "gwt.js",
         "content.js"
       ],
