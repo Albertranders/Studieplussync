@@ -34,6 +34,18 @@ export function parseAuthRedirect(redirectUrl, expectedState, now = Date.now()) 
   return { token, expiresAt: now + seconds * 1000 };
 }
 
+// Kører `work(token)`. Afviser Google tokenet (fejl med status 401), hentes et nyt token,
+// og arbejdet prøves én gang til. Så klarer en udløbet session sig selv i samme kørsel.
+// `getToken` skal selv sørge for, at det afviste token ikke bruges igen (det ryddes i background.js).
+export async function withTokenRetry(getToken, work) {
+  try {
+    return await work(await getToken());
+  } catch (error) {
+    if (error?.status !== 401) throw error;
+    return await work(await getToken());
+  }
+}
+
 // Er et gemt token stadig gyldigt (med 60 sekunders sikkerhedsmargin)?
 export function isTokenFresh(cached, now = Date.now()) {
   return Boolean(cached?.token) && cached.expiresAt - 60_000 > now;

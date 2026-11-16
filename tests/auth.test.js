@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildAuthUrl, isTokenFresh, parseAuthRedirect } from "../auth.js";
+import { buildAuthUrl, isTokenFresh, parseAuthRedirect, withTokenRetry } from "../auth.js";
 
 const REDIRECT = "https://abcdef.chromiumapp.org/";
 
@@ -36,4 +36,34 @@ test("token er frisk indtil 60 sekunder før udløb", () => {
   assert.equal(isTokenFresh({ token: "t", expiresAt: 200_000 }, 100_000), true);
   assert.equal(isTokenFresh({ token: "t", expiresAt: 150_000 }, 100_000), false);
   assert.equal(isTokenFresh(undefined, 0), false);
+});
+
+test("afvist token (401) giver ét nyt token og ét genforsøg", async () => {
+  let tokens = 0;
+  const used = [];
+  const result = await withTokenRetry(async () => `t${++tokens}`, async token => {
+    used.push(token);
+    if (token === "t1") throw Object.assign(new Error("afvist"), { status: 401 });
+    return "ok";
+  });
+  assert.equal(result, "ok");
+  assert.deepEqual(used, ["t1", "t2"]);
+});
+
+test("andre fejl end 401 genforsøges ikke", async () => {
+  let tokens = 0;
+  await assert.rejects(
+    withTokenRetry(async () => `t${++tokens}`, async () => { throw Object.assign(new Error("server"), { status: 500 }); }),
+    /server/
+  );
+  assert.equal(tokens, 1);
+});
+
+test("gentagen 401 giver op efter ét genforsøg", async () => {
+  let tokens = 0;
+  await assert.rejects(
+    withTokenRetry(async () => `t${++tokens}`, async () => { throw Object.assign(new Error("afvist"), { status: 401 }); }),
+    /afvist/
+  );
+  assert.equal(tokens, 2);
 });

@@ -2,7 +2,7 @@
 import { buildPlan, contentHash, eventBody, isSafeSchedule, isSuspiciousDrop, MANAGED_HASH, MANAGED_KEY, TIME_ZONE } from "./sync.js";
 import "./config.js";   // opsætning (se config.js)
 import "./errors.js";   // fejlkoder (se errors.js)
-import { buildAuthUrl, isTokenFresh, parseAuthRedirect } from "./auth.js";
+import { buildAuthUrl, isTokenFresh, parseAuthRedirect, withTokenRetry } from "./auth.js";
 
 // Client ID (fra config.js). Skal være en OAuth-klient af typen "Web application", og
 // redirect-URI'en fra `chrome.identity.getRedirectURL()` skal være tilføjet i Google Cloud Console.
@@ -289,20 +289,24 @@ async function syncNow(interactive = false) {
     // Går noget galt her, stopper vi, før kalenderen røres
     if (!isSafeSchedule(lessons)) throw new StudySyncError("E501", "Skemaet kunne ikke valideres. Kalenderen er ikke ændret.");
 
-    const token = await googleToken(interactive);
-    const calendarId = await ensureCalendar(token);
-    // Find tidsrummet skemaet dækker (første til sidste dato, inkl. sidste dag)
-    const dates = lessons.map(lesson => lesson.date).sort();
-    const start = new Date(`${dates[0]}T00:00:00`);
-    const end = new Date(`${dates[dates.length - 1]}T00:00:00`);
-    end.setDate(end.getDate() + 1);
-    const existing = await getManagedEvents(token, calendarId, start, end);
-    // Beskyt mod en delvis hentning, der ellers ville slette mange events
-    if (isSuspiciousDrop(existing.length, lessons.length)) {
-      throw new StudySyncError("E502", `Studie+: ${lessons.length} lektioner, kalender: ${existing.length}.`);
-    }
-    const plan = buildPlan(lessons, existing);
-    await applyPlan(token, calendarId, plan);
+    // Afviser Google tokenet (401), ryddes det i googleRequest, og hele Google-delen prøves én gang
+    // til med et nyt token (stille fornyelse først). Planen beregnes forfra, så et genforsøg er sikkert.
+    const plan = await withTokenRetry(() => googleToken(interactive), async token => {
+      const calendarId = await ensureCalendar(token);
+      // Find tidsrummet skemaet dækker (første til sidste dato, inkl. sidste dag)
+      const dates = lessons.map(lesson => lesson.date).sort();
+      const start = new Date(`${dates[0]}T00:00:00`);
+      const end = new Date(`${dates[dates.length - 1]}T00:00:00`);
+      end.setDate(end.getDate() + 1);
+      const existing = await getManagedEvents(token, calendarId, start, end);
+      // Beskyt mod en delvis hentning, der ellers ville slette mange events
+      if (isSuspiciousDrop(existing.length, lessons.length)) {
+        throw new StudySyncError("E502", `Studie+: ${lessons.length} lektioner, kalender: ${existing.length}.`);
+      }
+      const plan = buildPlan(lessons, existing);
+      await applyPlan(token, calendarId, plan);
+      return plan;
+    });
     const status = {
       ok: true,
       message: `Synkroniseret: ${plan.create.length} nye, ${plan.update.length} ændrede, ${plan.delete.length} slettede, ${plan.unchanged} uændrede.`,
