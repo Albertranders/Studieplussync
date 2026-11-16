@@ -31,7 +31,7 @@ Google Chrome, Opera og Edge (Chromium 116 eller nyere). Alle bruger det samme G
 
 Opretter du selv Client ID'et: lav en OAuth-klient af typen **Web application** i Google Cloud Console, og tilføj redirect-URI'en fra trin 4 under *Authorized redirect URIs*.
 
-Tip: Sæt en fast `key` i `manifest.json`, så Extension ID (og dermed redirect-URI) ikke ændrer sig, hvis udvidelsen fjernes og indlæses igen.
+Extension ID er fast, fordi `manifest.json` har en `key`. Det er `haknapnmhoblbadaiaehbkcniohlcifd`, og redirect-URI'en er derfor `https://haknapnmhoblbadaiaehbkcniohlcifd.chromiumapp.org/` i alle browsere.
 
 ## Google OAuth
 
