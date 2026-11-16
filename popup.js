@@ -1,5 +1,7 @@
 // Popup'ens logik: knapper, statusvisning og valg af antal uger.
 
+const CONFIG = globalThis.STUDIESYNC_CONFIG;   // indstillinger fra config.js
+
 // Henter elementerne fra popup.html
 const state = document.getElementById("state");           // overskrift for status
 const detail = document.getElementById("detail");         // uddybende statustekst
@@ -25,7 +27,7 @@ function message(type) {
 
 // Kører når popup'en åbnes: indlæs gemt antal uger og seneste status
 async function load() {
-  const settings = await chrome.storage.local.get({ scheduleWeeks: 4 });
+  const settings = await chrome.storage.local.get({ scheduleWeeks: CONFIG.defaultWeeks });
   weeksSelect.value = String(settings.scheduleWeeks);
   const result = await message("STUDIESYNC_STATUS");
   if (result?.lastStatus) setStatus(result.lastStatus);
@@ -61,7 +63,7 @@ syncButton.addEventListener("click", async () => {
 
 // Gem antal uger, når brugeren ændrer valget (begrænset til 1-12)
 weeksSelect.addEventListener("change", async () => {
-  const weeks = Math.max(1, Math.min(12, Number(weeksSelect.value) || 4));
+  const weeks = Math.max(1, Math.min(CONFIG.maxWeeks, Number(weeksSelect.value) || CONFIG.defaultWeeks));
   await chrome.storage.local.set({ scheduleWeeks: weeks });
 });
 

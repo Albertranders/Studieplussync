@@ -7,7 +7,7 @@
   // Brug det domæne, siden kører på (all.uddataplus.dk eller all.studieplus.dk),
   // så kaldene og cookies altid går til det rigtige sted.
   const BASE = location.origin;
-  const MODULE = "skema";                      // navnet på skema-modulet
+  const MODULE = globalThis.STUDIESYNC_CONFIG.studiePlusModule;                      // navnet på skema-modulet
   let discoveryPromise;                        // cache, så vi kun slår versionen op én gang
 
   // Finder de værdier, serveren kræver: GWT-"permutation" (version af klientkoden)
@@ -267,7 +267,7 @@
       encodeDate(endDate);
 
     // Send kaldet med brugerens egen login-session (cookies)
-    const response = await fetch(`${BASE}/skema/skema/skemaservice`, {
+    const response = await fetch(`${BASE}/${MODULE}/${MODULE}/skemaservice`, {
       method: "POST",
       credentials: "include",
       cache: "no-store",

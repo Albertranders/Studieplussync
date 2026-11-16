@@ -1,9 +1,10 @@
 // Ren synkroniseringslogik uden netværk eller browser-API'er (kan derfor testes med `node --test`).
+import "./config.js";   // opsætning (se config.js)
 
 // Navne på de skjulte "private extended properties" vi gemmer på hvert Google-event
 export const MANAGED_KEY = "studiesyncKey";   // stabil nøgle, så vi kan genkende en lektion næste gang
 export const MANAGED_HASH = "studiesyncHash"; // fingeraftryk af indholdet, så vi kun opdaterer ved ændringer
-export const TIME_ZONE = "Europe/Copenhagen";
+export const TIME_ZONE = globalThis.STUDIESYNC_CONFIG.timeZone;   // sættes i config.js
 
 // Nøglen der identificerer en lektion: Studie+'s id, eller en sammensat nøgle hvis id mangler
 export function stableKey(lesson) {

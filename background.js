@@ -1,13 +1,15 @@
 // Service worker: styrer Google-login, kalenderkald og selve synkroniseringen.
 import { buildPlan, contentHash, eventBody, isSafeSchedule, isSuspiciousDrop, MANAGED_HASH, MANAGED_KEY, TIME_ZONE } from "./sync.js";
+import "./config.js";   // opsætning (se config.js)
 import { buildAuthUrl, isTokenFresh, needsWebAuthFlow, parseAuthRedirect } from "./auth.js";
 
 // Client ID til Opera/Edge. Skal være en OAuth-klient af typen "Web application", og
 // redirect-URI'en fra `chrome.identity.getRedirectURL()` skal være tilføjet i Google Cloud Console.
 // Chrome bruger i stedet `oauth2.client_id` fra manifest.json.
-const WEB_CLIENT_ID = "INSERT WEB CLIENT ID HERE";
+const CONFIG = globalThis.STUDIESYNC_CONFIG;   // alle indstillinger ligger i config.js
+const WEB_CLIENT_ID = CONFIG.webClientId;
 
-const CALENDAR_NAME = "Studie+ skema";       // navnet på den kalender vi opretter
+const CALENDAR_NAME = CONFIG.calendarName;       // navnet på den kalender vi opretter
 const ALARM_NAME = "studiesync-auto-sync";   // navnet på den tilbagevendende alarm
 
 // --- Små hjælpere til lagring og status ---
@@ -77,8 +79,8 @@ async function chromeToken(interactive) {
 // --- Kald til Google Calendar med automatisk genforsøg ---
 
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
-const WRITE_DELAY_MS = 300;   // pause mellem skrivninger, så Google ikke rate-limiter
-const MAX_TRIES = 6;          // maks. antal forsøg pr. kald
+const WRITE_DELAY_MS = CONFIG.writeDelayMs;   // pause mellem skrivninger, så Google ikke rate-limiter
+const MAX_TRIES = CONFIG.maxTries;          // maks. antal forsøg pr. kald
 
 // Er svaret en "du kalder for hurtigt"-fejl fra Google?
 function isRateLimited(status, body) {
@@ -173,8 +175,8 @@ async function findStudyPlusTab() {
 
 // Antal uger der skal hentes (valgt i popup'en), begrænset til 1-12, standard 4
 async function scheduleWeeks() {
-  const { scheduleWeeks = 4 } = await storageGet(["scheduleWeeks"]);
-  return Math.max(1, Math.min(12, Number(scheduleWeeks) || 4));
+  const { scheduleWeeks = CONFIG.defaultWeeks } = await storageGet(["scheduleWeeks"]);
+  return Math.max(1, Math.min(CONFIG.maxWeeks, Number(scheduleWeeks) || CONFIG.defaultWeeks));
 }
 
 // Sender en besked til content-scriptet i fanen og venter på svar
@@ -289,9 +291,9 @@ async function syncNow(interactive = false) {
 
 // --- Hændelser ---
 
-// Ved installation: opret en alarm, der udløses hvert 30. minut
+// Ved installation: opret en alarm, der udløses hvert `autoSyncMinutes`. minut (config.js)
 chrome.runtime.onInstalled.addListener(() => {
-  chrome.alarms.create(ALARM_NAME, { periodInMinutes: 30 });
+  chrome.alarms.create(ALARM_NAME, { periodInMinutes: CONFIG.autoSyncMinutes });
 });
 // Når alarmen udløses: synkronisér i baggrunden (uden login-vindue, fejl ignoreres)
 chrome.alarms.onAlarm.addListener(alarm => {

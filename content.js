@@ -3,6 +3,7 @@
 // af den synlige side (SVG) findes stadig her, men bruges ikke af extractLessons.
 (() => {
   "use strict";
+  const CONFIG = globalThis.STUDIESYNC_CONFIG;   // indstillinger fra config.js
 
   // Danske ugedage -> JavaScripts dagnummer (søndag = 0)
   const DAY_NAMES = {
@@ -129,7 +130,7 @@
 
   // Periode der skal hentes: fra mandag i denne uge og `weeks` uger frem (1-12, standard 4)
   function scheduleRange(weeks) {
-    const count = Math.max(1, Math.min(12, Number(weeks) || 4));
+    const count = Math.max(1, Math.min(CONFIG.maxWeeks, Number(weeks) || CONFIG.defaultWeeks));
     const start = new Date();
     start.setHours(0, 0, 0, 0);
     start.setDate(start.getDate() - ((start.getDay() + 6) % 7)); // tilbage til mandag

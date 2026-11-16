@@ -40,6 +40,7 @@
         "https://all.studieplus.dk/*"
       ],
       "js": [
+        "config.js",
         "gwt.js",
         "content.js"
       ],

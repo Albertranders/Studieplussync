@@ -2,6 +2,10 @@
 
 Chrome-udvidelse, der læser skemaet fra en allerede åben Studie+-session og synkroniserer det til en separat Google Kalender.
 
+## Opsætning
+
+Alle variable ligger i **`config.js`**: Client ID'er, kalendernavn, tidszone, synkroniseringsinterval og antal uger. Udfyld filen, og kør `node apply-config.js`, som kopierer Chrome-Client ID'et over i `manifest.json`.
+
 ## Adgang
 
 For at få adgang skal du have et **Client ID** af mig. Du får det ved at kontakte mig på Discord: **Albertranders**.
@@ -24,7 +28,7 @@ Du skal også sende mig:
 3. Vælg **Indlæs udpakket**.
 4. Vælg denne repositories rodmappe, hvor `manifest.json` ligger.
 5. Kopiér udvidelsens **Extension ID** fra `chrome://extensions` og send det til mig på Discord (**Albertranders**) sammen med den Gmail, du vil have kalenderbegivenhederne ind på.
-6. Indsæt det Client ID, du får af mig, i `manifest.json` under `oauth2.client_id`, og genindlæs udvidelsen.
+6. Indsæt det Client ID, du får af mig, i `chromeClientId` i `config.js`, kør `node apply-config.js`, og genindlæs udvidelsen.
 7. Log ind i Chrome med samme Gmail, som du har sendt til mig.
 8. Åbn Studie+ og log ind.
 9. Åbn StudieSync, forbind Google Kalender, og vælg **Synkronisér nu**.
@@ -36,7 +40,7 @@ Opera har ikke Chromes `getAuthToken`, så her bruges en separat OAuth-klient:
 1. Åbn `opera://extensions`, aktivér Developer mode og vælg **Load unpacked** (i Edge: `edge://extensions`).
 2. Kopiér udvidelsens **Extension ID**. Redirect-URI'en bliver `https://<extension-id>.chromiumapp.org/`.
 3. I Google Cloud Console: opret en OAuth-klient af typen **Web application**, og tilføj redirect-URI'en fra trin 2 under *Authorized redirect URIs*.
-4. Indsæt klientens Client ID i `WEB_CLIENT_ID` øverst i `background.js`, og genindlæs udvidelsen.
+4. Indsæt klientens Client ID i `webClientId` i `config.js`, og genindlæs udvidelsen.
 5. Åbn StudieSync, forbind Google Kalender, og log ind i det vindue, der åbner.
 
 Tip: Sæt en fast `key` i `manifest.json`, så Extension ID (og dermed redirect-URI) ikke ændrer sig mellem installationer.
