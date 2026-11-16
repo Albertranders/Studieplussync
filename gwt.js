@@ -4,7 +4,9 @@
   // Henter skemaet direkte fra Studie+'s serverkald (GWT-RPC) i stedet for at læse siden.
   // GWT-RPC er Googles Web Toolkit's interne kaldformat; det er uofficielt og kan ændre sig,
   // så parseren er bevidst streng og stopper hellere end at gætte.
-  const BASE = "https://all.uddataplus.dk";   // Studie+'s adresse
+  // Brug det domæne, siden kører på (all.uddataplus.dk eller all.studieplus.dk),
+  // så kaldene og cookies altid går til det rigtige sted.
+  const BASE = location.origin;
   const MODULE = "skema";                      // navnet på skema-modulet
   let discoveryPromise;                        // cache, så vi kun slår versionen op én gang
 

@@ -165,7 +165,9 @@ async function getManagedEvents(token, calendarId, timeMin, timeMax) {
 
 // Finder en åben, ikke-sovende Studie+-fane (content-scriptet kører dér)
 async function findStudyPlusTab() {
-  const tabs = await chrome.tabs.query({ url: "https://all.uddataplus.dk/*" });
+  const tabs = await chrome.tabs.query({
+    url: ["https://all.uddataplus.dk/*", "https://all.studieplus.dk/*"]
+  });
   return tabs.find(tab => tab.id != null && !tab.discarded) || null;
 }
 
