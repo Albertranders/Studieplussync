@@ -5,9 +5,8 @@
 // ============================================================================
 //
 //  SÅDAN GØR DU:
-//   1. Udfyld afsnit 1 (Client ID'er).
-//   2. Kør `node apply-config.js`  → kopierer chromeClientId over i manifest.json.
-//      (Chrome læser kun sit Client ID fra manifest.json, ikke herfra.)
+//   1. Udfyld googleClientId herunder (afsnit 1).
+//   2. Gem filen.
 //   3. Genindlæs udvidelsen på chrome://extensions (eller opera://extensions).
 //
 //  DET DER IKKE STÅR HER (fordi browseren kræver det i manifest.json):
@@ -20,18 +19,16 @@
 globalThis.STUDIESYNC_CONFIG = {
 
   // --------------------------------------------------------------------------
-  // 1. SKAL UDFYLDES: Google Client ID'er
-  //    Du får dem af Albertranders (Discord) eller opretter dem i Google Cloud Console.
+  // 1. SKAL UDFYLDES: Google Client ID
+  //    Du får det af Albertranders (Discord) eller opretter det i Google Cloud Console.
   // --------------------------------------------------------------------------
 
-  // Chrome: OAuth-klient af typen "Chrome-udvidelse".
-  // Kopieres til manifest.json af `node apply-config.js`.
-  chromeClientId: "INSERT CLIENT ID HERE",
-
-  // Opera og Edge: OAuth-klient af typen "Web application".
-  // Redirect-URI'en  https://<extension-id>.chromiumapp.org/  skal være tilføjet i
-  // Google Cloud Console. Extension ID står på opera://extensions.
-  webClientId: "INSERT WEB CLIENT ID HERE",
+  // Google OAuth Client ID – bruges i Chrome, Opera og Edge.
+  // Skal være en OAuth-klient af typen "Web application". Redirect-URI'en
+  //   https://<extension-id>.chromiumapp.org/
+  // skal være tilføjet i Google Cloud Console. Extension ID står på chrome://extensions
+  // (eller opera://extensions).
+  googleClientId: "INSERT CLIENT ID HERE",
 
   // --------------------------------------------------------------------------
   // 2. KAN ÆNDRES: Kalender og tid

@@ -17,11 +17,8 @@ rm -f "$OUT"
 zip -r "$OUT" manifest.json config.js background.js auth.js content.js gwt.js sync.js \
   popup.html popup.css popup.js icons -x "*.DS_Store"
 
-# Advar hvis OAuth client_id stadig er pladsholderen (Chrome i manifestet via apply-config.js, Opera/Edge i config.js)
-if grep -q "INSERT CLIENT ID HERE" manifest.json; then
-  echo "ADVARSEL: manifest.json mangler stadig et rigtigt OAuth client_id." >&2
-fi
-if grep -q "INSERT WEB CLIENT ID HERE" config.js; then
-  echo "ADVARSEL: config.js mangler stadig et Web-Client ID (Opera/Edge)." >&2
+# Advar hvis Client ID stadig er pladsholderen
+if grep -q "INSERT CLIENT ID HERE" config.js; then
+  echo "ADVARSEL: config.js mangler stadig et Google Client ID (googleClientId)." >&2
 fi
 echo "Lavet: $OUT"

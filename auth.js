@@ -5,11 +5,6 @@
 export const AUTH_ENDPOINT = "https://accounts.google.com/o/oauth2/v2/auth";
 export const SCOPE = "https://www.googleapis.com/auth/calendar.app.created";
 
-// Opera og Edge har ikke Chromes `getAuthToken`-login, så de bruger `launchWebAuthFlow`.
-export function needsWebAuthFlow(userAgent = "") {
-  return /\bOPR\//.test(userAgent) || /\bEdg(e|A|iOS)?\//.test(userAgent);
-}
-
 // Bygger URL'en til Googles login-side (implicit flow, token returneres i redirect-URL'ens #-del).
 export function buildAuthUrl({ clientId, redirectUri, state, interactive = true }) {
   const params = new URLSearchParams({

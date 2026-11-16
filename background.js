@@ -1,13 +1,12 @@
 // Service worker: styrer Google-login, kalenderkald og selve synkroniseringen.
 import { buildPlan, contentHash, eventBody, isSafeSchedule, isSuspiciousDrop, MANAGED_HASH, MANAGED_KEY, TIME_ZONE } from "./sync.js";
 import "./config.js";   // opsætning (se config.js)
-import { buildAuthUrl, isTokenFresh, needsWebAuthFlow, parseAuthRedirect } from "./auth.js";
+import { buildAuthUrl, isTokenFresh, parseAuthRedirect } from "./auth.js";
 
-// Client ID til Opera/Edge. Skal være en OAuth-klient af typen "Web application", og
+// Client ID (fra config.js). Skal være en OAuth-klient af typen "Web application", og
 // redirect-URI'en fra `chrome.identity.getRedirectURL()` skal være tilføjet i Google Cloud Console.
-// Chrome bruger i stedet `oauth2.client_id` fra manifest.json.
 const CONFIG = globalThis.STUDIESYNC_CONFIG;   // alle indstillinger ligger i config.js
-const WEB_CLIENT_ID = CONFIG.webClientId;
+const CLIENT_ID = CONFIG.googleClientId;
 
 const CALENDAR_NAME = CONFIG.calendarName;       // navnet på den kalender vi opretter
 const ALARM_NAME = "studiesync-auto-sync";   // navnet på den tilbagevendende alarm
@@ -34,22 +33,21 @@ function calendarUrl(path) {
 // --- Google-login ---
 
 // Henter et OAuth-token. `interactive` = må der vises et login-vindue?
-// Chrome bruger sit eget login; Opera og Edge bruger et almindeligt OAuth-vindue.
+// Alle Chromium-browsere (Chrome, Opera, Edge) bruger det samme OAuth-vindue.
 async function googleToken(interactive) {
-  if (needsWebAuthFlow(navigator.userAgent)) return webAuthFlowToken(interactive);
-  return chromeToken(interactive);
+  return webAuthFlowToken(interactive);
 }
 
 // Login via `launchWebAuthFlow` (virker i alle Chromium-browsere). Token gemmes, til det udløber.
 async function webAuthFlowToken(interactive) {
   const { webToken } = await storageGet(["webToken"]);
   if (isTokenFresh(webToken)) return webToken.token;
-  if (WEB_CLIENT_ID.startsWith("INSERT")) {
-    throw new Error("Mangler Web-Client ID til Opera/Edge. Se README.");
+  if (CLIENT_ID.startsWith("INSERT")) {
+    throw new Error("Mangler Client ID. Udfyld googleClientId i config.js (se README).");
   }
   const state = crypto.randomUUID();
   const url = buildAuthUrl({
-    clientId: WEB_CLIENT_ID,
+    clientId: CLIENT_ID,
     redirectUri: chrome.identity.getRedirectURL(),
     state,
     interactive
@@ -63,17 +61,6 @@ async function webAuthFlowToken(interactive) {
   const fresh = parseAuthRedirect(redirectUrl, state);
   await storageSet({ webToken: fresh });
   return fresh.token;
-}
-
-// Login via Chromes indbyggede `getAuthToken` (kun Google Chrome)
-async function chromeToken(interactive) {
-  return new Promise((resolve, reject) => {
-    chrome.identity.getAuthToken({ interactive }, token => {
-      const error = chrome.runtime.lastError;
-      if (error || !token) reject(new Error(error?.message || "Google-login mislykkedes."));
-      else resolve(token);
-    });
-  });
 }
 
 // --- Kald til Google Calendar med automatisk genforsøg ---

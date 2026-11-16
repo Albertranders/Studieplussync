@@ -4,7 +4,7 @@ Chrome-udvidelse, der læser skemaet fra en allerede åben Studie+-session og sy
 
 ## Opsætning
 
-Alle variable ligger i **`config.js`**: Client ID'er, kalendernavn, tidszone, synkroniseringsinterval og antal uger. Udfyld filen, og kør `node apply-config.js`, som kopierer Chrome-Client ID'et over i `manifest.json`.
+Alle variable ligger i **`config.js`**: Google Client ID, kalendernavn, tidszone, synkroniseringsinterval og antal uger. Åbn filen, ret, gem og genindlæs udvidelsen. Der skal ikke køres nogen kommando.
 
 ## Adgang
 
@@ -12,38 +12,26 @@ For at få adgang skal du have et **Client ID** af mig. Du får det ved at konta
 
 Du skal også sende mig:
 
-- dit **Extension ID**. Du finder det på `chrome://extensions`, når udvidelsen er indlæst (se Installation herunder).
-- din **Gmail**, som du vil have kalenderbegivenhederne ind på. Det er også den konto, du skal logge ind med i Chrome.
+- dit **Extension ID**. Du finder det på `chrome://extensions` (eller `opera://extensions`), når udvidelsen er indlæst.
+- din **Gmail**, som du vil have kalenderbegivenhederne ind på.
 
 ## Understøttede browsere
 
-- **Google Chrome**, version 116 eller nyere (Windows, macOS og Linux). Bruger Chromes eget Google-login.
-- **Opera** og **Edge** (Chromium 116 eller nyere). Bruger et almindeligt Google-loginvindue (`launchWebAuthFlow`). Se "Opera og Edge" herunder.
-- Brave, Vivaldi og andre Chromium-browsere er ikke testet.
+Google Chrome, Opera og Edge (Chromium 116 eller nyere). Alle bruger det samme Google-loginvindue. Brave, Vivaldi og andre Chromium-browsere er ikke testet.
 
 ## Installation
 
-1. Åbn `chrome://extensions`.
+1. Åbn `chrome://extensions` (Opera: `opera://extensions`, Edge: `edge://extensions`).
 2. Aktivér Udviklertilstand.
-3. Vælg **Indlæs udpakket**.
-4. Vælg denne repositories rodmappe, hvor `manifest.json` ligger.
-5. Kopiér udvidelsens **Extension ID** fra `chrome://extensions` og send det til mig på Discord (**Albertranders**) sammen med den Gmail, du vil have kalenderbegivenhederne ind på.
-6. Indsæt det Client ID, du får af mig, i `chromeClientId` i `config.js`, kør `node apply-config.js`, og genindlæs udvidelsen.
-7. Log ind i Chrome med samme Gmail, som du har sendt til mig.
-8. Åbn Studie+ og log ind.
-9. Åbn StudieSync, forbind Google Kalender, og vælg **Synkronisér nu**.
+3. Vælg **Indlæs udpakket** (Load unpacked), og vælg mappen, hvor `manifest.json` ligger.
+4. Kopiér udvidelsens **Extension ID** og send det til mig sammen med din Gmail. Redirect-URI'en bliver `https://<extension-id>.chromiumapp.org/`.
+5. Indsæt det Client ID, du får af mig, i `googleClientId` i `config.js`, gem, og genindlæs udvidelsen.
+6. Åbn Studie+ og log ind.
+7. Åbn StudieSync, forbind Google Kalender, og vælg **Synkronisér nu**.
 
-## Opera og Edge
+Opretter du selv Client ID'et: lav en OAuth-klient af typen **Web application** i Google Cloud Console, og tilføj redirect-URI'en fra trin 4 under *Authorized redirect URIs*.
 
-Opera har ikke Chromes `getAuthToken`, så her bruges en separat OAuth-klient:
-
-1. Åbn `opera://extensions`, aktivér Developer mode og vælg **Load unpacked** (i Edge: `edge://extensions`).
-2. Kopiér udvidelsens **Extension ID**. Redirect-URI'en bliver `https://<extension-id>.chromiumapp.org/`.
-3. I Google Cloud Console: opret en OAuth-klient af typen **Web application**, og tilføj redirect-URI'en fra trin 2 under *Authorized redirect URIs*.
-4. Indsæt klientens Client ID i `webClientId` i `config.js`, og genindlæs udvidelsen.
-5. Åbn StudieSync, forbind Google Kalender, og log ind i det vindue, der åbner.
-
-Tip: Sæt en fast `key` i `manifest.json`, så Extension ID (og dermed redirect-URI) ikke ændrer sig mellem installationer.
+Tip: Sæt en fast `key` i `manifest.json`, så Extension ID (og dermed redirect-URI) ikke ændrer sig, hvis udvidelsen fjernes og indlæses igen.
 
 ## Google OAuth
 

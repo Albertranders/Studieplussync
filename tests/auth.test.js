@@ -1,16 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildAuthUrl, isTokenFresh, needsWebAuthFlow, parseAuthRedirect } from "../auth.js";
+import { buildAuthUrl, isTokenFresh, parseAuthRedirect } from "../auth.js";
 
 const REDIRECT = "https://abcdef.chromiumapp.org/";
 
-test("Opera og Edge bruger web-login, Chrome gør ikke", () => {
-  const chrome = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/130.0.0.0 Safari/537.36";
-  assert.equal(needsWebAuthFlow(chrome), false);
-  assert.equal(needsWebAuthFlow(chrome + " OPR/115.0.0.0"), true);
-  assert.equal(needsWebAuthFlow(chrome + " Edg/130.0.0.0"), true);
-  assert.equal(needsWebAuthFlow(""), false);
-});
 
 test("auth-URL indeholder klient, redirect, scope og state", () => {
   const url = new URL(buildAuthUrl({ clientId: "cid", redirectUri: REDIRECT, state: "s1" }));
