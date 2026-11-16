@@ -22,9 +22,27 @@ function storageGet(keys) {
 function storageSet(values) {
   return chrome.storage.local.set(values);
 }
-// Gemmer seneste status (vises i popup'en) sammen med et tidsstempel
-function sendStatus(status) {
-  return storageSet({ lastStatus: status, lastUpdated: new Date().toISOString() });
+// Viser en rød advarselsmarkering på udvidelsens ikon ved fejl.
+async function updateActionStatus(status) {
+  if (status?.ok === false) {
+    await chrome.action.setBadgeBackgroundColor({ color: "#D93025" });
+    await chrome.action.setBadgeTextColor({ color: "#FFFFFF" });
+    await chrome.action.setBadgeText({ text: "!" });
+  } else if (status?.ok === true) {
+    await chrome.action.setBadgeText({ text: "" });
+  }
+}
+
+// Genskab markeringen, når browseren starter eller service worker vågner.
+async function restoreActionStatus() {
+  const { lastStatus } = await storageGet(["lastStatus"]);
+  if (lastStatus) await updateActionStatus(lastStatus);
+}
+
+// Gemmer seneste status og opdaterer browserikonets fejlmarkering.
+async function sendStatus(status) {
+  await storageSet({ lastStatus: status, lastUpdated: new Date().toISOString() });
+  await updateActionStatus(status);
 }
 // Bygger fuld URL til Google Calendar API
 function calendarUrl(path) {
@@ -306,7 +324,12 @@ async function syncNow(interactive = false) {
 // Ved installation: opret en alarm, der udløses hvert `autoSyncMinutes`. minut (config.js, standard 30)
 chrome.runtime.onInstalled.addListener(() => {
   chrome.alarms.create(ALARM_NAME, { periodInMinutes: Math.max(1, Number(CONFIG.autoSyncMinutes) || 30) });
+  restoreActionStatus().catch(() => {});
 });
+
+// Service workers kan genstartes, så genskab ikonets status fra storage.
+chrome.runtime.onStartup.addListener(() => restoreActionStatus().catch(() => {}));
+restoreActionStatus().catch(() => {});
 // Når alarmen udløses: synkronisér i baggrunden (uden login-vindue, fejl ignoreres)
 chrome.alarms.onAlarm.addListener(alarm => {
   if (alarm.name === ALARM_NAME) syncNow(false).catch(() => {});
@@ -330,7 +353,13 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   }
   // Forbind Google Kalender (viser login-vindue hvis nødvendigt)
   if (message?.type === "STUDIESYNC_CONNECT") {
-    googleToken(true).then(() => sendResponse({ ok: true })).catch(error => sendResponse(STUDIESYNC_ERRORS.toStatus(error)));
+    googleToken(true)
+      .then(() => sendResponse({ ok: true }))
+      .catch(async error => {
+        const status = STUDIESYNC_ERRORS.toStatus(error);
+        await sendStatus(status);
+        sendResponse(status);
+      });
     return true;
   }
 });
