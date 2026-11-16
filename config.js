@@ -28,7 +28,7 @@ globalThis.STUDIESYNC_CONFIG = {
   //   https://<extension-id>.chromiumapp.org/
   // skal være tilføjet i Google Cloud Console. Extension ID står på chrome://extensions
   // (eller opera://extensions).
-  googleClientId: "INSERT CLIENT ID HERE",
+  googleClientId: "644012646289-dpkv3hs4aqb1nirgk4075aoa6sjlslji.apps.googleusercontent.com",
 
   // --------------------------------------------------------------------------
   // 2. KAN ÆNDRES: Kalender og tid
