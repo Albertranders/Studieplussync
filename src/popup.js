@@ -346,7 +346,7 @@ async function load() {
     ? "Alle trin er gennemført."
     : `${guideCompletedSteps.filter(Boolean).length} af ${guideSteps.length} trin gennemført.`;
   const { guideCompleted } = await chrome.storage.local.get(["guideCompleted"]);
-  if (!guideCompleted) await openGuide();
+  if (!guideCompleted || !guideCompletedSteps.every(Boolean)) await openGuide();
 }
 load().catch(error => {
   setBusy("Dashboard kunne ikke indlæses", error?.message || "Genindlæs udvidelsen, og prøv igen.");
