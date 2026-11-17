@@ -8,6 +8,7 @@ const viewMain = $("view-main"), viewSettings = $("view-settings");
 const state = $("state"), detail = $("detail"), dot = $("dot"), updated = $("updated");
 const syncButton = $("sync"), connectButton = $("connect");
 const menu = $("menu"), menuButton = $("menu-button");
+const historyPanel = $("history-panel");
 
 // Sender en besked til baggrundsscriptet (background.js) og venter på svaret
 function message(type) {
@@ -62,6 +63,51 @@ document.addEventListener("click", event => { if (!menu.contains(event.target)) 
 document.addEventListener("keydown", event => { if (event.key === "Escape") openMenu(false); });
 
 $("menu-settings").addEventListener("click", () => { openMenu(false); showView("settings"); });
+
+$("history-toggle").addEventListener("click", async () => {
+  const opening = historyPanel.hidden;
+  historyPanel.hidden = !opening;
+  $("history-toggle").setAttribute("aria-expanded", String(opening));
+  if (opening) await renderHistory();
+});
+
+async function renderHistory() {
+  const list = $("history-list");
+  list.replaceChildren();
+  const history = await message("STUDIESYNC_HISTORY");
+  if (!Array.isArray(history) || history.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "history-empty";
+    empty.textContent = "Der er endnu ingen synkroniseringer.";
+    list.append(empty);
+    return;
+  }
+  for (const item of history) {
+    const row = document.createElement("article");
+    row.className = "history-item";
+    const heading = document.createElement("div");
+    heading.className = "history-heading";
+    const result = document.createElement("strong");
+    result.textContent = item.ok ? "Gennemført" : "Fejlede";
+    result.className = item.ok ? "history-good" : "history-bad";
+    const date = document.createElement("time");
+    date.dateTime = item.at;
+    const parsed = new Date(item.at);
+    date.textContent = Number.isNaN(parsed.getTime()) ? "Ukendt tidspunkt" : parsed.toLocaleString("da-DK");
+    heading.append(result, date);
+    const description = document.createElement("p");
+    description.textContent = item.message || "";
+    const meta = document.createElement("small");
+    meta.textContent = item.trigger === "automatic" ? "Automatisk" : "Manuel";
+    if (item.code) meta.textContent += " · " + item.code;
+    if (item.counts) {
+      const c = item.counts;
+      meta.textContent += " · " + c.created + " nye, " + c.updated + " ændrede, " + c.deleted + " slettede";
+    }
+    row.append(heading, description, meta);
+    list.append(row);
+  }
+}
 
 $("menu-test").addEventListener("click", async () => {
   openMenu(false);
