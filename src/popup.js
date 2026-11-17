@@ -5,7 +5,6 @@ const CONFIG = globalThis.STUDIESYNC_CONFIG;
 const $ = id => document.getElementById(id);
 const viewMain = $("view-main"), viewSettings = $("view-settings"), viewGuide = $("view-guide");
 let currentGuideAction = null;
-let guideActionSuccess = false;
 let guideFeedback = "";
 let guideFeedbackType = "neutral";
 const state = $("state"), detail = $("detail"), dot = $("dot"), updated = $("last-sync-value");
@@ -213,7 +212,6 @@ $("guide-action").addEventListener("click", async () => {
   currentGuideAction = step.task;
   $("guide-action").disabled = true;
   $("guide-action").textContent = "Arbejder…";
-  guideActionSuccess = false;
   guideFeedback = "Kontrollerer…";
   guideFeedbackType = "neutral";
   let success = false;
@@ -239,7 +237,6 @@ $("guide-action").addEventListener("click", async () => {
       guideFeedback = "Kontrollen er gennemført. Du kan gå videre.";
       guideFeedbackType = "success";
       guideCompletedSteps[guideIndex] = true;
-      guideActionSuccess = true;
       await chrome.storage.local.set({ guideCompletedSteps });
     }
   } catch (error) {
@@ -252,16 +249,26 @@ $("guide-action").addEventListener("click", async () => {
 });
 
 $("guide-back").addEventListener("click", () => {
-  if (guideIndex > 0) { guideIndex--; guideFeedback = ""; guideFeedbackType = "neutral"; renderGuide(); }
+  if (guideIndex === 0) return;
+
+  guideIndex -= 1;
+  guideFeedback = "";
+  guideFeedbackType = "neutral";
+  renderGuide();
 });
+
 $("guide-next").addEventListener("click", async () => {
   if (!guideCompletedSteps[guideIndex]) return;
-  if (guideIndex < guideSteps.length-1) {
-    guideIndex++;
+
+  if (guideIndex < guideSteps.length - 1) {
+    guideIndex += 1;
     guideFeedback = "";
     guideFeedbackType = "neutral";
     renderGuide();
-  } else if (guideCompletedSteps.every(Boolean)) {
+    return;
+  }
+
+  if (guideCompletedSteps.every(Boolean)) {
     await finishGuide();
   }
 });
