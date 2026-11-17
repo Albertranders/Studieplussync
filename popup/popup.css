@@ -223,3 +223,5 @@ html, body { width: 420px; max-height: none; overflow: hidden; }
 .guide-action { margin-top: 14px; }
 .guide-confirm { margin-top: 12px; }
 .guide-tip { line-height: 1.45; }
+
+body { min-height: 540px; }
