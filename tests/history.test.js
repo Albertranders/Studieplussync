@@ -25,3 +25,8 @@ test("newest entries are first and history is capped", () => {
 test("ignores malformed stored history", () => {
   assert.deepEqual(appendHistory([{ nope: true }, null], { at: "now", ok: false }), [{ at: "now", ok: false }]);
 });
+
+test("does not invent lesson totals for a partial synchronization", () => {
+  const entry = createHistoryEntry({ ok: false, partial: true, message: "Delvis.", counts: { created: 2, updated: 1, deleted: 0 } });
+  assert.deepEqual(entry.counts, { created: 2, updated: 1, deleted: 0 });
+});

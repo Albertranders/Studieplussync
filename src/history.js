@@ -10,11 +10,11 @@ export function createHistoryEntry(status, trigger = "manual", at = new Date().t
     ...(status?.code ? { code: String(status.code).slice(0, 12) } : {}),
     ...(counts && typeof counts === "object" ? {
       counts: {
-        lessons: Number(counts.lessons) || 0,
+        ...(Number.isFinite(Number(counts.lessons)) ? { lessons: Number(counts.lessons) || 0 } : {}),
         created: Number(counts.created) || 0,
         updated: Number(counts.updated) || 0,
         deleted: Number(counts.deleted) || 0,
-        unchanged: Number(counts.unchanged) || 0
+        ...(Number.isFinite(Number(counts.unchanged)) ? { unchanged: Number(counts.unchanged) || 0 } : {})
       }
     } : {})
   };
