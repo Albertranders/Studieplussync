@@ -5,6 +5,7 @@ const CONFIG = globalThis.STUDIESYNC_CONFIG;
 const $ = id => document.getElementById(id);
 const viewMain = $("view-main"), viewSettings = $("view-settings"), viewGuide = $("view-guide");
 let currentGuideAction = null;
+let guidePausedForSettings = false;
 let guideFeedback = "";
 let guideFeedbackType = "neutral";
 const state = $("state"), detail = $("detail"), dot = $("dot"), updated = $("last-sync-value");
@@ -205,7 +206,21 @@ async function finishGuide() {
   showView("settings");
 }
 $("guide-start").addEventListener("click", openGuide);
-$("guide-close").addEventListener("click", () => showView("settings"));
+$("guide-resume").addEventListener("click", async () => {
+  if (!guidePausedForSettings) return;
+  guidePausedForSettings = false;
+  $("guide-resume").hidden = true;
+  guideCompletedSteps[guideIndex] = true;
+  guideFeedback = "Indstillingerne er gennemgået. Du kan gå videre.";
+  guideFeedbackType = "success";
+  await chrome.storage.local.set({ guideCompletedSteps });
+  renderGuide();
+  showView("guide");
+});
+$("guide-close").addEventListener("click", () => {
+  $("guide-resume").hidden = true;
+  showView("settings");
+});
 $("guide-action").addEventListener("click", async () => {
   const step = guideSteps[guideIndex];
   if (currentGuideAction) return;
@@ -228,8 +243,10 @@ $("guide-action").addEventListener("click", async () => {
       success = await syncCalendar();
       if (!success) { guideFeedback = "Synkroniseringen blev ikke gennemført. Kontrollér, at Studie+ er åben, og prøv igen."; guideFeedbackType = "error"; }
     } else if (step.task === "settings") {
+      guidePausedForSettings = true;
+      $("guide-resume").hidden = false;
       showView("settings");
-      success = true;
+      return;
     } else if (step.task === "finish") {
       success = true;
     }
