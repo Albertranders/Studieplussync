@@ -25,9 +25,9 @@ Dette er projektets interne liste over planlagte forbedringer.
 
 ## Brugeroplevelse
 
-- [ ] Gør popup'en mere informativ med næste lektion, seneste synkronisering og forbindelsesstatus.
-- [ ] Opdel indstillinger i kategorier som Kalender, Synkronisering, Udseende og Avanceret.
+- [x] Gør popup'en mere informativ med næste lektion, seneste synkronisering og forbindelsesstatus.
+- [x] Opdel indstillinger i kategorier som Kalender, Synkronisering, Udseende og Avanceret.
 - [x] Vis synkroniseringshistorik med antal ændringer og eventuelle fejl.
-- [ ] Tilføj en førstegangsvejledning til Studie+, Google-login og første synkronisering.
-- [ ] Vis udvidelsens versionsnummer.
+- [x] Tilføj en førstegangsvejledning til Studie+, Google-login og første synkronisering.
+- [x] Vis udvidelsens versionsnummer.
 - [ ] Gør det muligt at eksportere fejlloggen som en fil.
