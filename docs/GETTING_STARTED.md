@@ -55,7 +55,7 @@ Tryk på den. StudieSync læser skemaet fra Studie+ og opretter eller opdaterer 
 
 Dashboardet giver et hurtigt overblik over:
 
-- **Forbindelser:** om Google Kalender er forbundet.
+- **Forbindelse:** om Google Kalender er forbundet.
 - **Seneste synkronisering:** tidspunktet for seneste synkroniseringsforsøg.
 - **Næste lektion:** den næste kommende begivenhed i StudieSync-kalenderen.
 - **Synkroniseringshistorik:** tidligere kørsler, ændringer og eventuelle fejlkoder.
@@ -87,4 +87,4 @@ Del aldrig adgangskoder, Google-tokens, cookies eller sessionsdata. Slør e-mail
 
 Du kan skifte Google-konto eller logge ud via menuen. Når du logger ud, tilbagekaldes adgangen hos Google, og loginoplysningerne fjernes fra browseren. Kalenderen og dens begivenheder bliver liggende i Google Kalender.
 
-Du kan åbne introduktionsguiden igen fra StudieSync-menuen, hvis du får brug for at gennemgå opsætningen.
+Du kan åbne introduktionsguiden igen under **Indstillinger** (menuen med de tre prikker), hvis du får brug for at gennemgå opsætningen.

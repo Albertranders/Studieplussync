@@ -13,7 +13,10 @@ const syncButton = $("sync"), connectButton = $("connect");
 const menu = $("menu"), menuButton = $("menu-button"), historyPanel = $("history-panel");
 
 function message(type) {
-  return new Promise(resolve => chrome.runtime.sendMessage({ type }, response => resolve(response)));
+  return new Promise(resolve => chrome.runtime.sendMessage({ type }, response => {
+    void chrome.runtime.lastError;   // læses, så Chrome ikke logger "Unchecked runtime.lastError"
+    resolve(response);
+  }));
 }
 function setStatus(status) {
   if (!status) return;
@@ -61,9 +64,10 @@ function renderNextLesson(lesson) {
   $("next-meta").textContent = lesson?.location ? `Lokale: ${lesson.location}` : "";
   $("next-badge").textContent = lesson ? "I kalenderen" : "Afventer";
 }
-async function refreshDashboard() {
+async function refreshDashboard(connected = true) {
   const status = await message("STUDIESYNC_STATUS");
-  if (status?.lastStatus) setStatus(status.lastStatus);
+  // Uden forbundet konto bliver beskeden "ikke forbundet" stående i stedet for gammel status
+  if (connected && status?.lastStatus) setStatus(status.lastStatus);
   if (status?.lastUpdated) {
     const date = formatDateTime(status.lastUpdated);
     updated.textContent = date || "Ukendt tidspunkt";
@@ -72,7 +76,8 @@ async function refreshDashboard() {
     updated.textContent = "Aldrig";
     $("last-sync-detail").textContent = "Ingen synkronisering endnu";
   }
-  const data = await message("STUDIESYNC_DASHBOARD");
+  // Næste lektion hentes kun, når Google er forbundet (ellers ville baggrundsscriptet kalde Google forgæves)
+  const data = connected ? await message("STUDIESYNC_DASHBOARD") : null;
   renderNextLesson(data?.nextLesson);
 }
 async function renderHistory() {
@@ -194,6 +199,8 @@ function renderGuide() {
     : `${guideCompletedSteps.filter(Boolean).length} af ${guideSteps.length} trin gennemført.`;
 }
 async function openGuide() {
+  guidePausedForSettings = false;
+  $("guide-resume").hidden = true;
   await loadGuideProgress();
   guideIndex = guideCompletedSteps.findIndex(done => !done);
   if (guideIndex < 0) guideIndex = 0;
@@ -218,6 +225,7 @@ $("guide-resume").addEventListener("click", async () => {
   showView("guide");
 });
 $("guide-close").addEventListener("click", () => {
+  guidePausedForSettings = false;
   $("guide-resume").hidden = true;
   showView("settings");
 });
@@ -362,7 +370,7 @@ async function load() {
   $("version").textContent = `v${manifest.version}`;
   const connected = await refreshAuth();
   if (!connected) showNotConnected();
-  await refreshDashboard();
+  await refreshDashboard(connected);
   await loadGuideProgress();
   $("guide-setting-status").textContent = guideCompletedSteps.every(Boolean)
     ? "Alle trin er gennemført."

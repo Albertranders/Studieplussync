@@ -494,11 +494,12 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     storageGet(["lastStatus", "lastUpdated", "calendarId"]).then(sendResponse);
     return true;
   }
-  // Hent synkroniseringshistorikken.
+  // Hent næste lektion til dashboardet
   if (message?.type === "STUDIESYNC_DASHBOARD") {
     dashboardData().then(sendResponse).catch(() => sendResponse({ nextLesson: null }));
     return true;
   }
+  // Hent synkroniseringshistorikken.
   if (message?.type === "STUDIESYNC_HISTORY") {
     storageGet(["syncHistory"]).then(result => sendResponse(result.syncHistory || []));
     return true;
