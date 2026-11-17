@@ -1,7 +1,7 @@
 // Tests af synkroniseringslogikken i sync.js. Kør med: npm test  (eller: node --test)
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildPlan, contentHash, eventBody, isSafeSchedule, isSuspiciousDrop, MANAGED_HASH, MANAGED_KEY } from "../sync.js";
+import { buildPlan, contentHash, eventBody, isSafeSchedule, isSuspiciousDrop, MANAGED_HASH, MANAGED_KEY } from "../src/sync.js";
 
 // Eksempel-lektion, som testene bruger
 const lesson = {

@@ -5,49 +5,10 @@
   "version": "0.2.0",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAqLf2ju3j4qyiEa+8yDnSoB66jGsizIydafIKqr425RkpkKGH/S7g5cMhmJhziOtvueGxuZ3AuOwAHqmXljMpT4mNByCCUIEuzemOyqrKi6I8jLrm/pPLwrFx4zn3Z3P+//vTgBrVnxi9e1R6ld8jk6wAxtWOHZcGQYvoWLyz2duXPL5laDWv+m7ANq8uiw8ki61y4OhEPS2E9vZSWZFT/SCmVT3GokYOwD+ssV7LupGKY51VLgkn2dZcRHXbd1Qy8MBHeMdQQF8/r+6lybzB/3ULTZu+bmblP46n6vAD/YXKwqxsEaQpvwR5NdpZAohXaERJC3pAiFwIjjB4GX7igQIDAQAB",
   "minimum_chrome_version": "116",
-  "icons": {
-    "16": "icons/icon16.png",
-    "32": "icons/icon32.png",
-    "48": "icons/icon48.png",
-    "128": "icons/icon128.png"
-  },
-  "permissions": [
-    "storage",
-    "alarms",
-    "identity"
-  ],
-  "host_permissions": [
-    "https://all.uddataplus.dk/*",
-    "https://all.studieplus.dk/*",
-    "https://www.googleapis.com/*",
-    "https://oauth2.googleapis.com/*"
-  ],
-  "background": {
-    "service_worker": "background.js",
-    "type": "module"
-  },
-  "action": {
-    "default_title": "StudieSync",
-    "default_popup": "popup.html",
-    "default_icon": {
-      "16": "icons/icon16.png",
-      "32": "icons/icon32.png",
-      "48": "icons/icon48.png"
-    }
-  },
-  "content_scripts": [
-    {
-      "matches": [
-        "https://all.uddataplus.dk/*",
-        "https://all.studieplus.dk/*"
-      ],
-      "js": [
-        "config.js",
-        "errors.js",
-        "gwt.js",
-        "content.js"
-      ],
-      "run_at": "document_idle"
-    }
-  ]
+  "icons": {"16":"icons/icon16.png","32":"icons/icon32.png","48":"icons/icon48.png","128":"icons/icon128.png"},
+  "permissions": ["storage","alarms","identity"],
+  "host_permissions": ["https://all.uddataplus.dk/*","https://all.studieplus.dk/*","https://www.googleapis.com/*","https://oauth2.googleapis.com/*"],
+  "background": {"service_worker":"src/background.js","type":"module"},
+  "action": {"default_title":"StudieSync","default_popup":"popup/index.html","default_icon":{"16":"icons/icon16.png","32":"icons/icon32.png","48":"icons/icon48.png"}},
+  "content_scripts": [{"matches":["https://all.uddataplus.dk/*","https://all.studieplus.dk/*"],"js":["src/config.js","src/errors.js","src/gwt.js","src/content.js"],"run_at":"document_idle"}]
 }
