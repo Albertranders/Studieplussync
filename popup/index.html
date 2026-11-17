@@ -15,7 +15,6 @@
     </button>
     <div id="menu" class="menu" role="menu" hidden>
       <button role="menuitem" id="menu-dashboard">Dashboard</button>
-      <button role="menuitem" id="menu-guide">Introduktionsguide</button>
       <button role="menuitem" id="menu-settings">Indstillinger</button>
       <button role="menuitem" id="menu-test">Test Studie+ forbindelsen</button>
       <div id="menu-account" hidden><div class="menu-sep" role="separator"></div><p class="menu-label" id="menu-email"></p><button role="menuitem" id="menu-switch">Skift Google-konto</button><button role="menuitem" id="menu-logout" class="danger">Log ud af Google</button></div>
@@ -26,15 +25,18 @@
 <main id="view-main">
   <section class="status" aria-live="polite"><span id="dot" class="dot"></span><div><strong id="state">Klar til synkronisering</strong><p id="detail">Log ind på Studie+ i en fane.</p></div></section>
   <div class="dashboard-heading"><div><p class="eyebrow">OVERSIGT</p><h2>Dit skema</h2></div><span id="version" class="version"></span></div>
-  <section class="dashboard-grid" aria-label="Dashboard">
-    <article class="dashboard-card connection-card"><div class="card-icon">↔</div><div><p class="card-label">Forbindelser</p><strong id="connection-value">Kontrollerer…</strong><p id="connection-detail" class="card-detail">Google Kalender og Studie+</p></div></article>
-    <article class="dashboard-card sync-card"><div class="card-icon">↻</div><div><p class="card-label">Seneste synkronisering</p><strong id="last-sync-value">Aldrig</strong><p id="last-sync-detail" class="card-detail">Ingen synkronisering endnu</p></div></article>
-    <article class="dashboard-card next-card"><div class="next-top"><div><p class="card-label">NÆSTE LEKTION</p><strong id="next-subject" class="next-subject">Intet skema indlæst</strong></div><span id="next-badge" class="next-badge">Afventer</span></div><p id="next-time" class="next-time">Synkronisér for at hente dit skema.</p><p id="next-meta" class="card-detail"></p></article>
+  <section class="next-card" aria-label="Næste lektion">
+    <div class="next-top"><div><p class="eyebrow">NÆSTE LEKTION</p><strong id="next-subject" class="next-subject">Intet skema indlæst</strong></div><span id="next-badge" class="next-badge">Afventer</span></div>
+    <p id="next-time" class="next-time">Synkronisér for at hente dit skema.</p><p id="next-meta" class="card-detail"></p>
+  </section>
+  <section class="metrics" aria-label="Synkroniseringsstatus">
+    <article class="metric"><span class="metric-label">FORBINDELSE</span><strong id="connection-value">Kontrollerer…</strong><small id="connection-detail">Google Kalender</small></article>
+    <article class="metric"><span class="metric-label">SIDST SYNKRONISERET</span><strong id="last-sync-value">Aldrig</strong><small id="last-sync-detail">Ingen synkronisering endnu</small></article>
   </section>
   <button id="connect" class="primary" hidden>Forbind Google Kalender</button>
   <button id="sync" class="primary" hidden>Synkronisér nu</button>
   <p class="foot" id="autosync"></p>
-  <div class="dashboard-actions"><button id="guide-start" class="secondary">Kom godt i gang</button><button id="history-toggle" class="link history-toggle" aria-expanded="false" aria-controls="history-panel">Synkroniseringshistorik</button></div>
+  <div class="dashboard-actions"><button id="history-toggle" class="link history-toggle" aria-expanded="false" aria-controls="history-panel">Vis synkroniseringshistorik</button><span id="version" class="version"></span></div>
   <section id="history-panel" class="history-panel" hidden aria-label="Synkroniseringshistorik"><div id="history-list"></div></section>
   <p class="foot credit">Udviklet af Albert Randers Jende</p>
 </main>
@@ -48,13 +50,14 @@
     <h3 id="guide-title">Åbn Studie+</h3>
     <p id="guide-body" class="guide-body"></p>
     <div id="guide-tip" class="guide-tip"></div>
+    <label class="guide-confirm"><input id="guide-confirmed" type="checkbox"><span>Jeg har gennemført dette trin</span></label>
   </section>
-  <div class="guide-actions"><button id="guide-back" class="secondary" disabled>Tilbage</button><button id="guide-next" class="primary guide-next">Næste</button></div>
-  <button id="guide-skip" class="link">Spring guiden over</button>
+  <div class="guide-actions"><button id="guide-back" class="secondary" disabled>Tilbage</button><button id="guide-next" class="primary guide-next" disabled>Næste</button></div>
 </main>
 
 <main id="view-settings" hidden>
   <div class="subhead"><button id="back" class="icon-button" aria-label="Tilbage">‹</button><h2>Indstillinger</h2><span id="saved" class="saved" aria-live="polite"></span></div>
+  <section class="guide-setting"><div><strong>Introduktionsguide</strong><small id="guide-setting-status">Gennemgå opsætningen trin for trin.</small></div><button id="guide-start" class="secondary">Åbn guide</button></section>
   <h3 class="settings-heading">Synkronisering</h3>
   <div class="card">
     <label class="row" for="weeks"><span><strong>Uger der indlæses</strong><small>Tælles fra mandag i denne uge</small></span><select id="weeks"></select></label>
