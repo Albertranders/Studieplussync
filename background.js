@@ -2,7 +2,7 @@
 import { buildPlan, contentHash, eventBody, isSafeSchedule, isSuspiciousDrop, MANAGED_HASH, MANAGED_KEY, TIME_ZONE } from "./sync.js";
 import "./config.js";   // opsætning (se config.js)
 import "./errors.js";   // fejlkoder (se errors.js)
-import { buildAuthUrl, isTokenFresh, parseAuthRedirect, withTokenRetry } from "./auth.js";
+import { buildAuthUrl, isTokenFresh, parseAuthRedirect, USERINFO_URL, withTokenRetry } from "./auth.js";
 
 // Client ID (fra config.js). Skal være en OAuth-klient af typen "Web application", og
 // redirect-URI'en fra `chrome.identity.getRedirectURL()` skal være tilføjet i Google Cloud Console.
@@ -59,12 +59,14 @@ async function googleToken(interactive) {
 
 // Beder Google om et nyt token. `interactive` = må der vises et login-vindue?
 async function requestToken(interactive) {
+  const { loginHint } = await storageGet(["loginHint"]);
   const state = crypto.randomUUID();
   const url = buildAuthUrl({
     clientId: CLIENT_ID,
     redirectUri: chrome.identity.getRedirectURL(),
     state,
-    interactive
+    interactive,
+    loginHint
   });
   let redirectUrl;
   try {
@@ -74,7 +76,21 @@ async function requestToken(interactive) {
   }
   const fresh = parseAuthRedirect(redirectUrl, state);
   await storageSet({ webToken: fresh });
+  if (!loginHint) await rememberAccount(fresh.token);
   return fresh.token;
+}
+
+// Gemmer e-mailen på den konto, der loggede ind, så fremtidige fornyelser kan ske stille.
+// Fejler det, gør det ikke noget: så virker alt som før, bare uden e-mail-tip.
+async function rememberAccount(token) {
+  try {
+    const response = await fetch(USERINFO_URL, { headers: { Authorization: `Bearer ${token}` } });
+    if (!response.ok) return;
+    const { email } = await response.json();
+    if (email) await storageSet({ loginHint: email });
+  } catch {
+    // ignoreres bevidst
+  }
 }
 
 // Login via `launchWebAuthFlow` (virker i alle Chromium-browsere).

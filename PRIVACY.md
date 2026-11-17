@@ -7,8 +7,8 @@ StudieSync er en browserudvidelse (Chrome, Opera, Edge m.fl.), der læser dit sk
 ## Hvad udvidelsen behandler
 
 - **Skemadata fra Studie+**: fag, tidspunkter, lokaler, lærere, lektier og noter. Dataene læses fra den Studie+-fane, du selv har åben og er logget ind i.
-- **Adgang til Google Kalender**: via Googles login (OAuth) med kun scope `calendar.app.created`. Det giver adgang til at oprette og ændre den kalender, udvidelsen selv har oprettet. Udvidelsen kan ikke se eller ændre dine øvrige kalendere eller events.
-- **Lokale indstillinger**: kalenderens id, antal uger der synkroniseres og status for seneste synkronisering. De gemmes i `chrome.storage.local` i din egen browser.
+- **Adgang til Google Kalender**: via Googles login (OAuth) med scopet `calendar.app.created`. Det giver adgang til at oprette og ændre den kalender, udvidelsen selv har oprettet. Udvidelsen kan ikke se eller ændre dine øvrige kalendere eller events. Scopene `openid` og `email` bruges kun til at læse din e-mailadresse, så udvidelsen kan huske, hvilken Google-konto du loggede ind med, og du ikke skal logge ind igen og igen.
+- **Lokale indstillinger**: kalenderens id, din Google-e-mail (som login-tip), antal uger der synkroniseres og status for seneste synkronisering. De gemmes i `chrome.storage.local` i din egen browser.
 
 ## Hvad udvidelsen ikke gør
 

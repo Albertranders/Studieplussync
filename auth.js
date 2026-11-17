@@ -5,17 +5,24 @@
 import "./errors.js";   // fejlkoder (se errors.js)
 export const AUTH_ENDPOINT = "https://accounts.google.com/o/oauth2/v2/auth";
 export const SCOPE = "https://www.googleapis.com/auth/calendar.app.created";
+// "openid email" bruges kun til at huske, HVILKEN Google-konto du loggede ind med (se loginHint herunder).
+export const SCOPES = ["openid", "email", SCOPE];
+export const USERINFO_URL = "https://www.googleapis.com/oauth2/v3/userinfo";
 
 // Bygger URL'en til Googles login-side (implicit flow, token returneres i redirect-URL'ens #-del).
-export function buildAuthUrl({ clientId, redirectUri, state, interactive = true }) {
+// `loginHint` = e-mailen fra sidst. Så ved Google hvilken konto der menes, og viser hverken
+// kontovælger eller login igen. Det gør den stille fornyelse (prompt=none) pålidelig,
+// også når flere Google-konti er logget ind i browseren.
+export function buildAuthUrl({ clientId, redirectUri, state, interactive = true, loginHint = "" }) {
   const params = new URLSearchParams({
     client_id: clientId,
     response_type: "token",
     redirect_uri: redirectUri,
-    scope: SCOPE,
+    scope: SCOPES.join(" "),
     state,
     include_granted_scopes: "true"
   });
+  if (loginHint) params.set("login_hint", loginHint);
   // Ved automatisk kørsel må Google ikke vise noget; så fejler kaldet stille i stedet for.
   if (!interactive) params.set("prompt", "none");
   return `${AUTH_ENDPOINT}?${params}`;

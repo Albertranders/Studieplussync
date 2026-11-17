@@ -11,8 +11,16 @@ test("auth-URL indeholder klient, redirect, scope og state", () => {
   assert.equal(url.searchParams.get("response_type"), "token");
   assert.equal(url.searchParams.get("redirect_uri"), REDIRECT);
   assert.equal(url.searchParams.get("state"), "s1");
-  assert.match(url.searchParams.get("scope"), /calendar\.app\.created$/);
+  const scopes = url.searchParams.get("scope").split(" ");
+  assert.ok(scopes.includes("https://www.googleapis.com/auth/calendar.app.created"));
+  assert.ok(scopes.includes("openid") && scopes.includes("email"));
+  assert.equal(url.searchParams.get("login_hint"), null);
   assert.equal(url.searchParams.get("prompt"), null);
+});
+
+test("login_hint sendes med, når e-mailen er kendt", () => {
+  const url = new URL(buildAuthUrl({ clientId: "c", redirectUri: REDIRECT, state: "s", loginHint: "elev@gmail.com" }));
+  assert.equal(url.searchParams.get("login_hint"), "elev@gmail.com");
 });
 
 test("ikke-interaktivt login beder om prompt=none", () => {

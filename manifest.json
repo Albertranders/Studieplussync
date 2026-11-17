@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "StudieSync",
   "description": "Synkroniser dit Studie+ skema med Google Kalender.",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAqLf2ju3j4qyiEa+8yDnSoB66jGsizIydafIKqr425RkpkKGH/S7g5cMhmJhziOtvueGxuZ3AuOwAHqmXljMpT4mNByCCUIEuzemOyqrKi6I8jLrm/pPLwrFx4zn3Z3P+//vTgBrVnxi9e1R6ld8jk6wAxtWOHZcGQYvoWLyz2duXPL5laDWv+m7ANq8uiw8ki61y4OhEPS2E9vZSWZFT/SCmVT3GokYOwD+ssV7LupGKY51VLgkn2dZcRHXbd1Qy8MBHeMdQQF8/r+6lybzB/3ULTZu+bmblP46n6vAD/YXKwqxsEaQpvwR5NdpZAohXaERJC3pAiFwIjjB4GX7igQIDAQAB",
   "minimum_chrome_version": "116",
   "icons": {

@@ -144,6 +144,6 @@ Kalenderen bliver aldrig ændret, når en fejl i E3xx, E4xx eller E5xx stopper e
 
 ## Google-adgang og privatliv
 
-Udvidelsen bruger kun adgangen `calendar.app.created`, så den kun administrerer sin egen "Studie+ skema"-kalender og ikke dine andre kalendere. Du kan altid tilbagekalde adgangen på https://myaccount.google.com/permissions. Læs mere i `PRIVACY.md`.
+Udvidelsen bruger adgangen `calendar.app.created`, så den kun administrerer sin egen "Studie+ skema"-kalender og ikke dine andre kalendere. `openid` og `email` bruges kun til at huske, hvilken konto du loggede ind med, så Google kan forny adgangen stille i baggrunden. Du kan altid tilbagekalde adgangen på https://myaccount.google.com/permissions. Læs mere i `PRIVACY.md`.
 
 Privat deling fjerner ikke Googles OAuth-krav. Uverificerede apps kan vise en advarsel eller være underlagt brugerbegrænsninger: https://support.google.com/cloud/answer/13464323

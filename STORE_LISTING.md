@@ -37,7 +37,7 @@ Udvidelsen synkroniserer brugerens Studie+ skema til en separat Google Kalender.
 ## Begrundelse for tilladelser (Permission justifications)
 - **storage**: Gemmer kalenderens id, valgt antal uger og status for seneste synkronisering lokalt.
 - **alarms**: Starter automatisk synkronisering (standard hvert 30. minut, kan ændres i config.js).
-- **identity**: Google-login (OAuth) til at oprette og opdatere kalenderen "Studie+ skema" via scope `calendar.app.created`.
+- **identity**: Google-login (OAuth) til at oprette og opdatere kalenderen "Studie+ skema" via scope `calendar.app.created` (samt `openid email` til at huske, hvilken konto der er logget ind).
 - **Host permission https://all.uddataplus.dk/* og https://all.studieplus.dk/***: Læser skemaet fra brugerens egen åbne og indloggede Studie+-fane.
 - **Host permission https://www.googleapis.com/***: Kalder Google Calendar API for at oprette, ændre og slette events i udvidelsens egen kalender.
 - **Content script på https://all.uddataplus.dk/* og https://all.studieplus.dk/***: Læser skemaet fra siden, så udvidelsen ikke behøver kodeord eller cookies.
