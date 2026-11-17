@@ -17,6 +17,8 @@ Browserudvidelse, der læser dit skema fra en åben Studie+-session og synkronis
 - [Privatlivspolitik](PRIVACY.md)
 - [Chrome Web Store-materiale](docs/CHROME_WEB_STORE.md)
 - [Roadmap og opgaveliste](docs/ROADMAP.md)
+- [Fejlfinding og diagnosticering](docs/DIAGNOSTICS.md)
+- [Ændringslog](CHANGELOG.md)
 
 ## Adgang
 
