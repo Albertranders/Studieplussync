@@ -2,6 +2,22 @@
 
 Browserudvidelse, der læser dit skema fra en åben Studie+-session og synkroniserer det til en separat Google Kalender ("Studie+ skema").
 
+## Projektstruktur
+
+- `manifest.json`: browserudvidelsens manifest.
+- `background.js`, `content.js` og `popup.*`: browserfunktionalitet og brugerflade.
+- `auth.js`, `sync.js`, `settings.js`, `config.js` og `errors.js`: login, synkronisering, indstillinger og fejlhåndtering.
+- `gwt.js`: læsning og fortolkning af Studie+'s GWT-kald.
+- `tests/`: automatiserede tests.
+- `icons/`: udvidelsens ikoner.
+- `docs/`: projektdokumentation og interne noter.
+
+## Dokumentation
+
+- [Privatlivspolitik](PRIVACY.md)
+- [Chrome Web Store-materiale](docs/CHROME_WEB_STORE.md)
+- [Roadmap og opgaveliste](docs/ROADMAP.md)
+
 ## Adgang
 
 Udvidelsen er privat, så alle brugere skal godkendes af mig først. Du skal ikke have noget Client ID, det ligger allerede i udvidelsen.
@@ -154,6 +170,6 @@ Kalenderen bliver aldrig ændret, når en fejl i E3xx, E4xx eller E5xx stopper e
 
 ## Google-adgang og privatliv
 
-Udvidelsen bruger adgangen `calendar.app.created`, så den kun administrerer sin egen "Studie+ skema"-kalender og ikke dine andre kalendere. `openid` og `email` bruges kun til at huske, hvilken konto du loggede ind med, så Google kan forny adgangen stille i baggrunden. Du kan altid tilbagekalde adgangen med **Log ud af Google** i menuen eller på https://myaccount.google.com/permissions. Læs mere i `PRIVACY.md`.
+Udvidelsen bruger adgangen `calendar.app.created`, så den kun administrerer sin egen "Studie+ skema"-kalender og ikke dine andre kalendere. `openid` og `email` bruges kun til at huske, hvilken konto du loggede ind med, så Google kan forny adgangen stille i baggrunden. Du kan altid tilbagekalde adgangen med **Log ud af Google** i menuen eller på https://myaccount.google.com/permissions. Læs mere i [privatlivspolitikken](PRIVACY.md).
 
 Privat deling fjerner ikke Googles OAuth-krav. Uverificerede apps kan vise en advarsel eller være underlagt brugerbegrænsninger: https://support.google.com/cloud/answer/13464323
