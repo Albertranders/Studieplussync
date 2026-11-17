@@ -4,16 +4,17 @@ import { autoSyncText, formatOffset, resolveSettings, timeZoneLabel, timeZoneOpt
 
 const defaults = { maxWeeks: 12, defaultWeeks: 4, autoSyncMinutes: 30, calendarName: "Studie+ skema", timeZone: "Europe/Copenhagen" };
 
-test("uden gemte valg bruges config.js", () => {
+// Cover settings defaults, validation, time-zone labels, ordering, and theme selection.
+test("configuration defaults are used when no saved settings exist", () => {
   assert.deepEqual(resolveSettings({}, defaults), { scheduleWeeks: 4, autoSync: true, autoSyncMinutes: 30, timeZone: "Europe/Copenhagen", theme: "auto", calendarName: "Studie+ skema" });
 });
 
-test("gemte valg vinder, og uger begrænses af maxWeeks", () => {
+test("saved choices override defaults and week counts respect maxWeeks", () => {
   const s = resolveSettings({ scheduleWeeks: 99, autoSync: false, autoSyncMinutes: 60, calendarName: "  Skole  " }, defaults);
   assert.deepEqual(s, { scheduleWeeks: 12, autoSync: false, autoSyncMinutes: 60, timeZone: "Europe/Copenhagen", theme: "auto", calendarName: "Skole" });
 });
 
-test("ugyldige værdier falder tilbage til config.js", () => {
+test("invalid saved values fall back to configuration defaults", () => {
   const s = resolveSettings({ scheduleWeeks: "abc", autoSyncMinutes: 0, calendarName: "   " }, defaults);
   assert.equal(s.scheduleWeeks, 4);
   assert.equal(s.autoSyncMinutes, 30);
@@ -21,18 +22,18 @@ test("ugyldige værdier falder tilbage til config.js", () => {
   assert.equal(s.timeZone, "Europe/Copenhagen");
 });
 
-test("brugerens tidszone gemmes, og ugyldige tidszoner afvises", () => {
+test("valid user time zones are retained and invalid zones are rejected", () => {
   assert.equal(resolveSettings({ timeZone: "America/New_York" }, defaults).timeZone, "America/New_York");
   assert.equal(resolveSettings({ timeZone: "Not/A_Timezone" }, defaults).timeZone, "Europe/Copenhagen");
 });
 
-test("teksten om automatisk synkronisering følger indstillingerne", () => {
+test("automatic-sync copy reflects the configured interval", () => {
   assert.match(autoSyncText({ autoSync: true, autoSyncMinutes: 30 }), /hvert 30\. minut/);
   assert.match(autoSyncText({ autoSync: true, autoSyncMinutes: 60 }), /hver time/);
   assert.match(autoSyncText({ autoSync: false, autoSyncMinutes: 30 }), /slået fra/);
 });
 
-test("tidszone-tekst viser GMT-forskydning, også med sommertid", () => {
+test("time-zone labels show GMT offsets, including daylight-saving changes", () => {
   const winter = new Date("2026-01-15T12:00:00Z");
   const summer = new Date("2026-07-15T12:00:00Z");
   assert.equal(timeZoneLabel("Europe/Copenhagen", winter), "(GMT+1) Europe/Copenhagen");
@@ -43,12 +44,12 @@ test("tidszone-tekst viser GMT-forskydning, også med sommertid", () => {
   assert.equal(formatOffset(-570), "GMT-9:30");
 });
 
-test("tidszoner sorteres efter forskydning og derefter navn", () => {
+test("time zones are sorted by offset and then by name", () => {
   const list = timeZoneOptions(["Europe/Copenhagen", "Asia/Tokyo", "UTC", "America/New_York", "Europe/Berlin"], new Date("2026-01-15T12:00:00Z"));
   assert.deepEqual(list.map(([id]) => id), ["America/New_York", "UTC", "Europe/Berlin", "Europe/Copenhagen", "Asia/Tokyo"]);
 });
 
-test("udseende: auto er standard, ugyldigt falder tilbage", () => {
+test("automatic theme is the default and invalid themes fall back to it", () => {
   assert.equal(resolveSettings({}, defaults).theme, "auto");
   assert.equal(resolveSettings({ theme: "dark" }, defaults).theme, "dark");
   assert.equal(resolveSettings({ theme: "light" }, defaults).theme, "light");

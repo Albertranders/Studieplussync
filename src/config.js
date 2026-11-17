@@ -1,49 +1,40 @@
 // ============================================================================
-//  StudieSync – OPSÆTNING
-//  Alle indstillinger står i denne ene fil. Ret, gem, og genindlæs udvidelsen på
-//  chrome://extensions (eller din browsers tilsvarende side). Der skal ikke køres
-//  nogen kommandoer.
-//  (Filen er almindelig JavaScript. Behold anførselstegnene "" omkring tekst.)
+// StudieSync configuration.
+// Edit values here, save the file, and reload the extension in the browser.
+// Most users can keep the defaults unchanged.
 //
-//  Du behøver normalt ikke ændre noget. Standardværdierne virker.
-//
-//  DET DER IKKE STÅR HER (fordi browseren kræver det i manifest.json):
-//   - De Studie+-adresser udvidelsen må køre på. Står under "host_permissions" og
-//     "content_scripts" → "matches" i manifest.json. Skifter Studie+ adresse igen,
-//     tilføjes den nye dér (og i background.js → findStudyPlusTab).
-//   - Udvidelsens navn, version og ikon (manifest.json).
+// Browser-required settings live in manifest.json, including allowed site
+// addresses, extension name, version, and icons.
 // ============================================================================
 
 globalThis.STUDIESYNC_CONFIG = {
 
   // --------------------------------------------------------------------------
-  // 1. KAN ÆNDRES: Kalender, tid og kontakt
+  // 1. User-configurable calendar, time-zone, and contact settings.
   // --------------------------------------------------------------------------
 
-  // Navnet på den kalender, der oprettes i Google Kalender.
+  // Name assigned to the calendar created in Google Calendar.
   calendarName: "Studie+ skema",
 
-  // Tidszone for lektionerne (IANA-navn, fx "Europe/Copenhagen").
+  // IANA time zone used for lesson times.
   timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || "Europe/Copenhagen",
 
-  // Hvordan brugerne kan kontakte dig. Vises i popup'en sammen med fejlkoden.
+  // Contact information shown with error codes in the popup.
   developerContact: "Discord: Albertranders",
 
   // --------------------------------------------------------------------------
-  // 2. KAN ÆNDRES: Synkronisering
+  // 2. User-configurable synchronization settings.
   // --------------------------------------------------------------------------
 
-  // Hvor ofte der synkroniseres automatisk (i minutter, mindst 1).
-  // Teksten nederst i udvidelsens popup følger denne værdi.
-  // Ændringen gælder først, når udvidelsen fjernes og indlæses igen.
+  // Automatic-sync interval in minutes; the popup displays this configured value.
   autoSyncMinutes: 30,
 
-  // Antal uger der hentes (talt fra mandag i den aktuelle uge).
-  defaultWeeks: 4,   // startværdi, før brugeren vælger noget i popup'en
-  maxWeeks: 12,      // øvre grænse (1 er altid nedre grænse)
+  // Number of weeks loaded, counted from Monday of the current week.
+  defaultWeeks: 4,   // Initial value until the user chooses another value.
+  maxWeeks: 12,      // Upper bound; the minimum supported value is one week.
 
   // --------------------------------------------------------------------------
-  // 3. AVANCERET: Rør kun ved, hvis noget er gået i stykker
+  // 3. Advanced settings; change only when maintaining the integration.
   // --------------------------------------------------------------------------
 
   // Google OAuth Client ID – bruges i Chrome, Opera, Edge og andre Chromium-browsere.

@@ -1,5 +1,6 @@
-// Popupens dashboard, introduktionsguide, menu og indstillinger.
+// Render the popup dashboard, onboarding guide, navigation menu, and settings.
 import { INTERVAL_CHOICES, THEME_CHOICES, WEEK_CHOICES, autoSyncText, resolveSettings, timeZoneOptions } from "./settings.js";
+import { shouldAutoOpenGuide } from "./onboarding.js";
 
 const CONFIG = globalThis.STUDIESYNC_CONFIG;
 const $ = id => document.getElementById(id);
@@ -14,24 +15,28 @@ const menu = $("menu"), menuButton = $("menu-button"), historyPanel = $("history
 
 function message(type) {
   return new Promise(resolve => chrome.runtime.sendMessage({ type }, response => {
-    void chrome.runtime.lastError;   // læses, så Chrome ikke logger "Unchecked runtime.lastError"
+    void chrome.runtime.lastError; // Read the callback error to prevent an unchecked-runtime warning.
     resolve(response);
   }));
 }
+// Apply a background status message to the dashboard's visible status elements.
 function setStatus(status) {
   if (!status) return;
   state.textContent = status.message || "Klar til synkronisering";
   detail.textContent = status.detail || (status.ok ? "Forbindelsen fungerer." : "Kontrollér Studie+ og prøv igen.");
   dot.className = "dot " + (status.ok ? "good" : "bad");
 }
+// Replace the current status with a temporary in-progress message.
 function setBusy(title, text) {
   state.textContent = title; detail.textContent = text; dot.className = "dot";
 }
+// Show one of the popup's top-level screens and hide the others.
 function showView(name) {
   viewMain.hidden = name !== "main";
   viewSettings.hidden = name !== "settings";
   viewGuide.hidden = name !== "guide";
 }
+// Synchronize the menu's visibility and accessibility state.
 function openMenu(open) {
   menu.hidden = !open;
   menuButton.setAttribute("aria-expanded", String(open));
@@ -40,6 +45,7 @@ menuButton.addEventListener("click", event => { event.stopPropagation(); openMen
 document.addEventListener("click", event => { if (!menu.contains(event.target) && event.target !== menuButton) openMenu(false); });
 document.addEventListener("keydown", event => { if (event.key === "Escape") openMenu(false); });
 
+// Read the connected Google account and update account-dependent controls.
 async function refreshAuth() {
   const auth = await message("STUDIESYNC_AUTH_STATE");
   const connected = Boolean(auth?.connected);
@@ -51,22 +57,26 @@ async function refreshAuth() {
   $("connection-detail").textContent = connected ? (auth?.email || "Google Kalender er klar") : "Forbind Google Kalender for at starte";
   return connected;
 }
+// Show the connection instructions whenever there is no linked Google account.
 function showNotConnected() { setBusy("Google Kalender er ikke forbundet", "Forbind din Google-konto for at komme i gang."); }
 
+// Format an ISO date for the Danish-language interface.
 function formatDateTime(value) {
   if (!value) return "";
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? "" : date.toLocaleString("da-DK", { weekday:"long", day:"numeric", month:"long", hour:"2-digit", minute:"2-digit" });
 }
+// Display the next scheduled lesson, or the empty-state copy when none is available.
 function renderNextLesson(lesson) {
   $("next-subject").textContent = lesson?.summary || "Ingen kommende lektion";
   $("next-time").textContent = lesson ? formatDateTime(lesson.start) : "Synkronisér for at hente dit skema.";
   $("next-meta").textContent = lesson?.location ? `Lokale: ${lesson.location}` : "";
   $("next-badge").textContent = lesson ? "I kalenderen" : "Afventer";
 }
+// Refresh sync metadata and fetch the next lesson only when Google is connected.
 async function refreshDashboard(connected = true) {
   const status = await message("STUDIESYNC_STATUS");
-  // Uden forbundet konto bliver beskeden "ikke forbundet" stående i stedet for gammel status
+  // Keep the disconnected message visible rather than replacing it with a stale status.
   if (connected && status?.lastStatus) setStatus(status.lastStatus);
   if (status?.lastUpdated) {
     const date = formatDateTime(status.lastUpdated);
@@ -76,10 +86,11 @@ async function refreshDashboard(connected = true) {
     updated.textContent = "Aldrig";
     $("last-sync-detail").textContent = "Ingen synkronisering endnu";
   }
-  // Næste lektion hentes kun, når Google er forbundet (ellers ville baggrundsscriptet kalde Google forgæves)
+  // Avoid a Google API request when no account is connected.
   const data = connected ? await message("STUDIESYNC_DASHBOARD") : null;
   renderNextLesson(data?.nextLesson);
 }
+// Render stored sync history using DOM nodes and textContent rather than HTML strings.
 async function renderHistory() {
   const list = $("history-list");
   list.replaceChildren();
@@ -139,6 +150,7 @@ $("menu-logout").addEventListener("click", async () => {
   else if (!connected) { showNotConnected(); updated.textContent = "Aldrig"; }
 });
 
+// Connect the selected Google account, refresh account status, and report the result.
 async function connectGoogle() {
   connectButton.disabled = true;
   const result = await message("STUDIESYNC_CONNECT");
@@ -148,6 +160,7 @@ async function connectGoogle() {
   await refreshDashboard();
   return Boolean(result?.ok);
 }
+// Run a calendar sync and refresh the dashboard and visible history afterward.
 async function syncCalendar() {
   syncButton.disabled = true;
   setBusy("Synkroniserer…", "Henter skema og opdaterer kalenderen. Første synkronisering kan tage op til 10 minutter.");
@@ -161,7 +174,7 @@ async function syncCalendar() {
 }
 connectButton.addEventListener("click", connectGoogle);
 syncButton.addEventListener("click", syncCalendar);
-// Introduktionsguide med obligatorisk bekræftelse af hvert trin.
+// Each onboarding step requires its associated action to be completed before continuing.
 const guideSteps = [
   { icon:"1", title:"Åbn Studie+", body:"Åbn Studie+ i en browserfane, og log ind. Lad fanen være åben, mens StudieSync bruges.", tip:"StudieSync bruger din aktive session. Du skal ikke indtaste din Studie+-adgangskode i udvidelsen.", action:"Test Studie+ forbindelse", task:"studyplus" },
   { icon:"2", title:"Forbind Google Kalender", body:"Forbind din Google-konto, og giv StudieSync adgang til at oprette og opdatere din skemakalender.", tip:"Brug den Google-konto, du vil have skemaet vist i.", action:"Forbind Google Kalender", task:"google" },
@@ -171,12 +184,14 @@ const guideSteps = [
 ];
 let guideIndex = 0;
 let guideCompletedSteps = [];
+// Load the persisted completion state for each onboarding step.
 async function loadGuideProgress() {
   const stored = await chrome.storage.local.get(["guideCompletedSteps"]);
   guideCompletedSteps = Array.isArray(stored.guideCompletedSteps)
     ? guideSteps.map((_, i) => stored.guideCompletedSteps.includes(i))
     : guideSteps.map(() => false);
 }
+// Update the guide content, completion feedback, and progress indicators.
 function renderGuide() {
   const step = guideSteps[guideIndex];
   $("guide-step-count").textContent = `${guideIndex+1} / ${guideSteps.length}`;
@@ -198,6 +213,7 @@ function renderGuide() {
     ? "Alle trin er gennemført."
     : `${guideCompletedSteps.filter(Boolean).length} af ${guideSteps.length} trin gennemført.`;
 }
+// Open the guide at its first incomplete step, or restart at the beginning when complete.
 async function openGuide() {
   guidePausedForSettings = false;
   $("guide-resume").hidden = true;
@@ -207,6 +223,7 @@ async function openGuide() {
   renderGuide();
   showView("guide");
 }
+// Persist guide completion and return to the settings screen.
 async function finishGuide() {
   await chrome.storage.local.set({ guideCompleted: true });
   $("guide-setting-status").textContent = "Alle trin er gennemført.";
@@ -238,40 +255,40 @@ $("guide-action").addEventListener("click", async () => {
   guideFeedback = "Kontrollerer…";
   guideFeedbackType = "neutral";
   let success = false;
-  try {
-    if (step.task === "studyplus") {
-      const result = await message("STUDIESYNC_TEST_CONNECTION");
-      setStatus(result);
-      success = Boolean(result?.ok);
-      if (!success) { guideFeedback = "Studie+ kunne ikke findes eller svarede ikke. Åbn Studie+, log ind, eller genindlæs fanen, og prøv igen."; guideFeedbackType = "error"; }
-    } else if (step.task === "google") {
-      success = await connectGoogle();
-      if (!success) { guideFeedback = "Google Kalender kunne ikke forbindes. Kontrollér login og tilladelser, og prøv igen."; guideFeedbackType = "error"; }
-    } else if (step.task === "sync") {
-      success = await syncCalendar();
-      if (!success) { guideFeedback = "Synkroniseringen blev ikke gennemført. Kontrollér, at Studie+ er åben, og prøv igen."; guideFeedbackType = "error"; }
-    } else if (step.task === "settings") {
-      guidePausedForSettings = true;
-      $("guide-resume").hidden = false;
-      showView("settings");
-      return;
-    } else if (step.task === "finish") {
-      success = true;
+    try {
+      if (step.task === "studyplus") {
+        const result = await message("STUDIESYNC_TEST_CONNECTION");
+        setStatus(result);
+        success = Boolean(result?.ok);
+        if (!success) { guideFeedback = "Studie+ kunne ikke findes eller svarede ikke. Åbn Studie+, log ind, eller genindlæs fanen, og prøv igen."; guideFeedbackType = "error"; }
+      } else if (step.task === "google") {
+        success = await connectGoogle();
+        if (!success) { guideFeedback = "Google Kalender kunne ikke forbindes. Kontrollér login og tilladelser, og prøv igen."; guideFeedbackType = "error"; }
+      } else if (step.task === "sync") {
+        success = await syncCalendar();
+        if (!success) { guideFeedback = "Synkroniseringen blev ikke gennemført. Kontrollér, at Studie+ er åben, og prøv igen."; guideFeedbackType = "error"; }
+      } else if (step.task === "settings") {
+        guidePausedForSettings = true;
+        $("guide-resume").hidden = false;
+        showView("settings");
+        return;
+      } else if (step.task === "finish") {
+        success = true;
+      }
+      if (success) {
+        guideFeedback = "Kontrollen er gennemført. Du kan gå videre.";
+        guideFeedbackType = "success";
+        guideCompletedSteps[guideIndex] = true;
+        await chrome.storage.local.set({ guideCompletedSteps });
+      }
+    } catch (error) {
+      guideFeedback = error?.message || "Handlingen mislykkedes. Prøv igen.";
+      guideFeedbackType = "error";
+    } finally {
+      currentGuideAction = null;
+      renderGuide();
     }
-    if (success) {
-      guideFeedback = "Kontrollen er gennemført. Du kan gå videre.";
-      guideFeedbackType = "success";
-      guideCompletedSteps[guideIndex] = true;
-      await chrome.storage.local.set({ guideCompletedSteps });
-    }
-  } catch (error) {
-    guideFeedback = error?.message || "Handlingen mislykkedes. Prøv igen.";
-    guideFeedbackType = "error";
-  } finally {
-    currentGuideAction = null;
-    renderGuide();
-  }
-});
+  });
 
 $("guide-back").addEventListener("click", () => {
   if (guideIndex === 0) return;
@@ -298,19 +315,22 @@ $("guide-next").addEventListener("click", async () => {
   }
 });
 
-// Indstillinger
+// Settings controls and their display helpers.
+// Populate a dropdown with values and a caller-provided display label.
 function fillSelect(select, values, label) {
   select.replaceChildren();
   for (const value of values) select.add(new Option(label(value), String(value)));
 }
 const weekLabel = n => n === 1 ? "1 uge" : `${n} uger`;
 const minutesLabel = m => m < 60 ? `${m} min.` : m % 60 === 0 ? (m === 60 ? "1 time" : `${m/60} timer`) : `${m} min.`;
+// Add the configured week and interval choices while preserving current custom values.
 function fillChoices(settings) {
   const maxWeeks = Math.max(1, Number(CONFIG.maxWeeks) || 12);
   const weeks = [...new Set([...WEEK_CHOICES.filter(n => n <= maxWeeks), settings.scheduleWeeks])].sort((a,b)=>a-b);
   const minutes = [...new Set([...INTERVAL_CHOICES, settings.autoSyncMinutes])].sort((a,b)=>a-b);
   fillSelect($("weeks"), weeks, weekLabel); fillSelect($("interval"), minutes, minutesLabel);
 }
+// Populate the time-zone selector with supported zones and the selected value.
 function fillTimeZones(selected) {
   const select = $("timeZone");
   const zones = typeof Intl.supportedValuesOf === "function" ? Intl.supportedValuesOf("timeZone") : [selected];
@@ -320,10 +340,12 @@ function fillTimeZones(selected) {
   for (const [id,label] of timeZoneOptions(zones)) select.add(new Option(label,id));
   select.value = selected;
 }
+// Apply an explicit light/dark theme or defer to the browser's system preference.
 function applyTheme(theme) {
   if (theme === "light" || theme === "dark") document.documentElement.dataset.theme = theme;
   else delete document.documentElement.dataset.theme;
 }
+// Fill all settings controls from a normalized settings object.
 function showSettings(settings) {
   fillChoices(settings);
   $("weeks").value = String(settings.scheduleWeeks);
@@ -337,15 +359,18 @@ function showSettings(settings) {
   $("theme").value = settings.theme; applyTheme(settings.theme);
   $("autosync").textContent = autoSyncText(settings);
 }
+// Read, normalize, and return settings saved by the extension.
 async function loadSettings() {
   return resolveSettings(await chrome.storage.local.get(["scheduleWeeks","autoSync","autoSyncMinutes","calendarName","timeZone","theme"]), CONFIG);
 }
 let savedTimer;
+// Briefly show the result of a settings save or reset.
 function flashSaved(text) {
   $("saved").textContent = text;
   clearTimeout(savedTimer);
   savedTimer = setTimeout(() => { $("saved").textContent = ""; }, 1500);
 }
+// Normalize and persist the current settings, then notify the service worker.
 async function saveSettings() {
   const settings = resolveSettings({
     scheduleWeeks:$("weeks").value, autoSync:$("autoSync").checked,
@@ -364,6 +389,7 @@ $("reset").addEventListener("click", async () => {
 });
 $("back").addEventListener("click", () => showView("main"));
 
+// Initialize settings, version, account state, dashboard, and onboarding state.
 async function load() {
   showSettings(await loadSettings());
   const manifest = chrome.runtime.getManifest();
@@ -375,8 +401,12 @@ async function load() {
   $("guide-setting-status").textContent = guideCompletedSteps.every(Boolean)
     ? "Alle trin er gennemført."
     : `${guideCompletedSteps.filter(Boolean).length} af ${guideSteps.length} trin gennemført.`;
-  const { guideCompleted } = await chrome.storage.local.get(["guideCompleted"]);
-  if (!guideCompleted || !guideCompletedSteps.every(Boolean)) await openGuide();
+  const { guideCompleted, guideAutoOpened } = await chrome.storage.local.get(["guideCompleted", "guideAutoOpened"]);
+  const allStepsCompleted = guideCompletedSteps.every(Boolean);
+  if (shouldAutoOpenGuide({ guideCompleted, guideAutoOpened, allStepsCompleted })) {
+    await chrome.storage.local.set({ guideAutoOpened: true });
+    await openGuide();
+  }
 }
 load().catch(error => {
   setBusy("Dashboard kunne ikke indlæses", error?.message || "Genindlæs udvidelsen, og prøv igen.");

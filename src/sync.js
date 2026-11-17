@@ -1,28 +1,28 @@
-// Ren synkroniseringslogik uden netværk eller browser-API'er (kan derfor testes med `node --test`).
-import "./config.js";   // opsætning (se config.js)
+// Pure calendar-planning logic, isolated from network and browser APIs for unit testing.
+import "./config.js"; // Load the shared extension defaults.
 
-// Navne på de skjulte "private extended properties" vi gemmer på hvert Google-event
-export const MANAGED_KEY = "studiesyncKey";   // stabil nøgle, så vi kan genkende en lektion næste gang
-export const MANAGED_HASH = "studiesyncHash"; // fingeraftryk af indholdet, så vi kun opdaterer ved ændringer
+// Private event properties identify managed lessons and detect content changes.
+export const MANAGED_KEY = "studiesyncKey"; // Stable identifier used to find the lesson on the next sync.
+export const MANAGED_HASH = "studiesyncHash"; // Content fingerprint used to avoid unnecessary updates.
  
-// Nøglen der identificerer en lektion: Studie+'s id, eller en sammensat nøgle hvis id mangler
+// Identify a lesson by its source ID, falling back to a composite key when absent.
 export function stableKey(lesson) {
   return String(lesson.id || `${lesson.date}|${lesson.start}|${lesson.subject}`);
 }
 
-// Omsætter en lektion til det JSON-objekt, Google Calendar API forventer
+// Convert a lesson into the event resource expected by the Google Calendar API.
 export function eventBody(lesson, timeZone = globalThis.STUDIESYNC_CONFIG.timeZone) {
-  // Beskrivelsen samles af lærer, lektier og note – tomme dele springes over
+  // Include only available teacher, homework, and note details in the event description.
   const description = [
     lesson.teacher ? `Lærer: ${lesson.teacher}` : "",
     lesson.homework ? `Lektier:\n${lesson.homework}` : "",
     lesson.note ? `Note:\n${lesson.note}` : ""
   ].filter(Boolean).join("\n\n");
 
-  // Farve i Google Kalender: 9 = blå (lektier), 10 = grøn (kun note), 5 = gul (intet)
+  // Color-code events by whether they contain homework or only a note.
   const colorId = lesson.homework ? "9" : lesson.note ? "10" : "5";
   return {
-    summary: lesson.subject || "Lektion", // eventets titel
+    summary: lesson.subject || "Lektion", // Use the subject as the calendar event title.
     location: lesson.room || "",
     description,
     colorId,
@@ -31,12 +31,12 @@ export function eventBody(lesson, timeZone = globalThis.STUDIESYNC_CONFIG.timeZo
   };
 }
 
-// Samler al indhold, der får et event til at skulle opdateres, i én streng
+// Serialize all event fields that should trigger an update.
 function contentJson(lesson, timeZone) {
   return JSON.stringify(eventBody(lesson, timeZone));
 }
 
-// 53-bit tekst-hash (cyrb53). Hurtig, uden async, og godt nok til at opdage ændringer.
+// Compute a fast 53-bit text hash for change detection.
 function cyrb53(text, seed) {
   let h1 = 0xdeadbeef ^ seed, h2 = 0x41c6ce57 ^ seed;
   for (let i = 0; i < text.length; i++) {
@@ -49,25 +49,22 @@ function cyrb53(text, seed) {
   return 4294967296 * (2097151 & h2) + (h1 >>> 0);
 }
 
-// Kort fingeraftryk af indholdet (~28 tegn). Google afkorter stille egenskaber over 1024 tegn,
-// så hash'en må ikke indeholde selve teksten, ellers ser lektioner med lange lektier ud som
-// "ændrede" ved hver synkronisering.
+// Store a compact fingerprint because Google truncates private-property values over 1024 characters.
 export function contentHash(lesson, timeZone) {
   const json = contentJson(lesson, timeZone);
   return "v2:" + cyrb53(json, 1).toString(16) + cyrb53(json, 2).toString(16);
 }
 
-// Den gamle hash var hele event-teksten. Genkendes, så eksisterende events ikke opdateres unødigt.
+// Accept the legacy full-content hash so existing events are not updated unnecessarily.
 function matchesStoredHash(stored, lesson, timeZone) {
   return stored === contentHash(lesson, timeZone) || stored === contentJson(lesson, timeZone);
 }
 
-// Sammenligner ønsket skema med de events, der allerede ligger i kalenderen,
-// og finder ud af hvad der skal oprettes, opdateres og slettes
+// Compare the desired schedule with managed events and produce the required calendar operations.
 export function buildPlan(lessons, existing, timeZone = globalThis.STUDIESYNC_CONFIG.timeZone) {
   const plan = { create: [], update: [], delete: [], unchanged: 0 };
 
-  // Ønskede lektioner efter nøgle; ved dubletter beholdes kun den første
+  // Keep the first lesson for each stable key to avoid duplicate events.
   const wanted = new Map();
   for (const lesson of lessons) {
     const key = stableKey(lesson);
@@ -75,14 +72,14 @@ export function buildPlan(lessons, existing, timeZone = globalThis.STUDIESYNC_CO
     wanted.set(key, lesson);
   }
 
-  // Eksisterende events som vi selv har oprettet (de har vores skjulte nøgle)
+  // Consider only events carrying our private ownership key.
   const managed = new Map();
   for (const event of existing) {
     const props = event.extendedProperties?.private || {};
     const key = props[MANAGED_KEY];
-    if (!key) continue; // ikke vores event: rør det aldrig
+    if (!key) continue; // Leave personal events untouched.
     if (managed.has(key)) {
-      plan.delete.push(event.id); // dublet i kalenderen: slet den ekstra
+      plan.delete.push(event.id); // Remove duplicate events created by this extension.
       continue;
     }
     managed.set(key, event);
@@ -91,31 +88,30 @@ export function buildPlan(lessons, existing, timeZone = globalThis.STUDIESYNC_CO
   for (const [key, lesson] of wanted) {
     const old = managed.get(key);
     if (!old) {
-      plan.create.push({ key, lesson }); // findes ikke endnu: opret
+      plan.create.push({ key, lesson }); // Create lessons that have no matching managed event.
       continue;
     }
     if (!matchesStoredHash(old.extendedProperties?.private?.[MANAGED_HASH], lesson, timeZone)) {
-      plan.update.push({ id: old.id, key, lesson }); // indholdet er ændret: opdater
+      plan.update.push({ id: old.id, key, lesson }); // Update the existing event when its content changed.
     } else {
-      plan.unchanged += 1; // identisk: gør intet
+      plan.unchanged += 1; // Skip writes for unchanged lessons.
     }
   }
 
-  // Events vi har oprettet, men som ikke længere er i skemaet, slettes
+  // Delete managed events whose lessons are no longer in the fetched schedule.
   for (const [key, event] of managed) {
     if (!wanted.has(key)) plan.delete.push(event.id);
   }
   return plan;
 }
 
-// Sikkerhedstjek: skemaet skal være en ikke-tom liste, hvor hver lektion har dato, tider og fag
+// Accept only non-empty schedules whose lessons include dates, times, and subjects.
 export function isSafeSchedule(lessons) {
   return Array.isArray(lessons) && lessons.length > 0 &&
     lessons.every(l => l.date && l.start && l.end && l.subject);
 }
 
-// Sikkerhedsnet: hvis Studie+ pludselig viser under halvdelen af de eksisterende lektioner
-// (og der er mindst 4), er det sandsynligvis en fejl, og vi stopper i stedet for at slette
+// Treat a sudden drop below half of at least four existing lessons as a likely extraction failure.
 export function isSuspiciousDrop(existingCount, newCount) {
   return existingCount >= 4 && newCount < Math.ceil(existingCount * 0.5);
 }

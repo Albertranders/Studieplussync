@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { appendHistory, createHistoryEntry, HISTORY_LIMIT } from "../src/history.js";
 
+// Verify history normalization, retention limits, and partial-sync summaries.
 test("creates a compact successful manual history entry", () => {
   const entry = createHistoryEntry({ ok: true, message: "Synkroniseret.", counts: { lessons: 12, created: 2, updated: 1, deleted: 0, unchanged: 9 } }, "manual", "2026-11-17T12:00:00.000Z");
   assert.deepEqual(entry, { at: "2026-11-17T12:00:00.000Z", ok: true, trigger: "manual", message: "Synkroniseret.", counts: { lessons: 12, created: 2, updated: 1, deleted: 0, unchanged: 9 } });

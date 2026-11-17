@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="./popup.css">
 </head>
 <body>
+<!-- Shared popup header and navigation menu. -->
 <header class="top">
   <div class="brand"><div class="mark">S</div><div><h1>StudieSync</h1><p>Studie+ → Google Kalender</p></div></div>
   <div class="menu-wrap">
@@ -22,6 +23,7 @@
   </div>
 </header>
 
+<!-- Main dashboard, connection status, next lesson, and history. -->
 <main id="view-main">
   <section class="status" aria-live="polite"><span id="dot" class="dot"></span><div><strong id="state">Klar til synkronisering</strong><p id="detail">Log ind på Studie+ i en fane.</p></div></section>
   <div class="dashboard-heading"><div><p class="eyebrow">OVERSIGT</p><h2>Dit skema</h2></div><span id="version" class="version"></span></div>
@@ -41,6 +43,7 @@
   <p class="foot credit">Udviklet af Albert Randers Jende</p>
 </main>
 
+<!-- First-run onboarding flow. -->
 <main id="view-guide" hidden>
   <div class="subhead"><button id="guide-close" class="icon-button" aria-label="Tilbage">‹</button><h2>Kom godt i gang</h2><span id="guide-step-count" class="saved"></span></div>
   <div class="guide-progress" aria-hidden="true"><span id="guide-progress-fill"></span></div>
@@ -56,6 +59,7 @@
   <div class="guide-actions"><button id="guide-back" class="secondary" disabled>Tilbage</button><button id="guide-next" class="primary guide-next" disabled>Næste</button></div>
 </main>
 
+<!-- User-configurable synchronization, calendar, and appearance settings. -->
 <main id="view-settings" hidden>
   <div class="subhead"><button id="back" class="icon-button" aria-label="Tilbage">‹</button><h2>Indstillinger</h2><span id="saved" class="saved" aria-live="polite"></span></div>
   <section class="guide-setting"><div><strong>Introduktionsguide</strong><small id="guide-setting-status">Gennemgå opsætningen trin for trin.</small></div><div><button id="guide-resume" class="secondary" hidden>Tilbage til guide</button> <button id="guide-start" class="secondary">Åbn guide</button></div></section>

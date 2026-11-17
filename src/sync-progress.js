@@ -1,4 +1,4 @@
-// Holder styr på kalenderændringer, der er bekræftet af Google under en synkronisering.
+// Count calendar writes only after Google confirms each operation.
 export function createSyncProgress() {
   const counts = { created: 0, updated: 0, deleted: 0 };
   return {
@@ -12,6 +12,7 @@ export function createSyncProgress() {
 }
 
 // Gør delvise ændringer tydelige, når et senere Google-kald fejler.
+// Add confirmed partial-write details to a failed sync status.
 export function addPartialProgressToStatus(status, progress = {}) {
   const counts = {
     created: Math.max(0, Number(progress.created) || 0),

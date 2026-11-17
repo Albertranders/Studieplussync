@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { addPartialProgressToStatus, createSyncProgress } from "../src/sync-progress.js";
 
+// Ensure reported progress includes only confirmed writes and safely describes partial failures.
 test("tracks only confirmed create, update and delete operations", () => {
   const progress = createSyncProgress();
   progress.record("created");

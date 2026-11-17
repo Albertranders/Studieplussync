@@ -1,9 +1,10 @@
-// Beskytter mod fejl som "Uncaught SyntaxError: Unexpected token '}'" i popup'en.
+// Validate popup script syntax and ensure JavaScript references match the HTML structure.
 import test from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { readFileSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { shouldAutoOpenGuide } from "../src/onboarding.js";
 
 const root = new URL("../", import.meta.url);
 const srcDir = fileURLToPath(new URL("src/", root));
@@ -40,4 +41,11 @@ test("popup.css har balancerede klammer", () => {
     assert.ok(depth >= 0, "Overskydende } i popup.css");
   }
   assert.equal(depth, 0, "Manglende } i popup.css");
+});
+
+test("introduktionsguiden åbnes automatisk kun første gang", () => {
+  assert.equal(shouldAutoOpenGuide({}), true);
+  assert.equal(shouldAutoOpenGuide({ guideAutoOpened: true }), false);
+  assert.equal(shouldAutoOpenGuide({ guideCompleted: true }), false);
+  assert.equal(shouldAutoOpenGuide({ allStepsCompleted: true }), false);
 });

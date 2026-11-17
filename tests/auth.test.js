@@ -2,10 +2,11 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { buildAuthUrl, isConnected, isTokenFresh, parseAuthRedirect, withTokenRetry } from "../src/auth.js";
 
+// Exercise OAuth URL construction, redirect validation, connection state, and token retry rules.
 const REDIRECT = "https://abcdef.chromiumapp.org/";
 
 
-test("auth-URL indeholder klient, redirect, scope og state", () => {
+test("auth URL contains client, redirect, scopes, and state", () => {
   const url = new URL(buildAuthUrl({ clientId: "cid", redirectUri: REDIRECT, state: "s1" }));
   assert.equal(url.searchParams.get("client_id"), "cid");
   assert.equal(url.searchParams.get("response_type"), "token");
@@ -18,35 +19,35 @@ test("auth-URL indeholder klient, redirect, scope og state", () => {
   assert.equal(url.searchParams.get("prompt"), null);
 });
 
-test("login_hint sendes med, når e-mailen er kendt", () => {
+test("login_hint is included when the account email is known", () => {
   const url = new URL(buildAuthUrl({ clientId: "c", redirectUri: REDIRECT, state: "s", loginHint: "elev@gmail.com" }));
   assert.equal(url.searchParams.get("login_hint"), "elev@gmail.com");
 });
 
-test("ikke-interaktivt login beder om prompt=none", () => {
+test("non-interactive sign-in requests prompt=none", () => {
   const url = new URL(buildAuthUrl({ clientId: "c", redirectUri: REDIRECT, state: "s", interactive: false }));
   assert.equal(url.searchParams.get("prompt"), "none");
 });
 
-test("gyldigt svar giver token og udløbstid", () => {
+test("a valid redirect returns the token and expiration time", () => {
   const result = parseAuthRedirect(`${REDIRECT}#access_token=tok&expires_in=3600&state=s1`, "s1", 1000);
   assert.deepEqual(result, { token: "tok", expiresAt: 1000 + 3600 * 1000 });
 });
 
-test("forkert state, fejl og afbrydelse afvises", () => {
+test("mismatched state, provider errors, and interrupted sign-in are rejected", () => {
   assert.throws(() => parseAuthRedirect(`${REDIRECT}#access_token=t&state=andet`, "s1"), /ugyldigt/);
   assert.throws(() => parseAuthRedirect(`${REDIRECT}#error=access_denied&state=s1`, "s1"), /access_denied/);
   assert.throws(() => parseAuthRedirect(undefined, "s1"), /afbrudt/);
   assert.throws(() => parseAuthRedirect(`${REDIRECT}#state=s1`, "s1"), /ikke noget token/);
 });
 
-test("token er frisk indtil 60 sekunder før udløb", () => {
+test("a token is fresh until 60 seconds before expiration", () => {
   assert.equal(isTokenFresh({ token: "t", expiresAt: 200_000 }, 100_000), true);
   assert.equal(isTokenFresh({ token: "t", expiresAt: 150_000 }, 100_000), false);
   assert.equal(isTokenFresh(undefined, 0), false);
 });
 
-test("afvist token (401) giver ét nyt token og ét genforsøg", async () => {
+test("a rejected token (401) gets one replacement and one retry", async () => {
   let tokens = 0;
   const used = [];
   const result = await withTokenRetry(async () => `t${++tokens}`, async token => {
@@ -58,7 +59,7 @@ test("afvist token (401) giver ét nyt token og ét genforsøg", async () => {
   assert.deepEqual(used, ["t1", "t2"]);
 });
 
-test("andre fejl end 401 genforsøges ikke", async () => {
+test("errors other than 401 are not retried", async () => {
   let tokens = 0;
   await assert.rejects(
     withTokenRetry(async () => `t${++tokens}`, async () => { throw Object.assign(new Error("server"), { status: 500 }); }),
@@ -67,7 +68,7 @@ test("andre fejl end 401 genforsøges ikke", async () => {
   assert.equal(tokens, 1);
 });
 
-test("gentagen 401 giver op efter ét genforsøg", async () => {
+test("a repeated 401 fails after one retry", async () => {
   let tokens = 0;
   await assert.rejects(
     withTokenRetry(async () => `t${++tokens}`, async () => { throw Object.assign(new Error("afvist"), { status: 401 }); }),
@@ -76,19 +77,19 @@ test("gentagen 401 giver op efter ét genforsøg", async () => {
   assert.equal(tokens, 2);
 });
 
-test("kontovælgeren vises ved forbind/skift konto, og login_hint udelades dér", () => {
+test("connect and switch actions show the account chooser without login_hint", () => {
   const url = new URL(buildAuthUrl({ clientId: "c", redirectUri: REDIRECT, state: "s", loginHint: "elev@gmail.com", selectAccount: true }));
   assert.equal(url.searchParams.get("prompt"), "select_account");
   assert.equal(url.searchParams.get("login_hint"), null);
 });
 
-test("stille login (prompt=none) vinder over kontovælgeren", () => {
+test("silent sign-in takes precedence over account selection", () => {
   const url = new URL(buildAuthUrl({ clientId: "c", redirectUri: REDIRECT, state: "s", interactive: false, selectAccount: true, loginHint: "a@b.dk" }));
   assert.equal(url.searchParams.get("prompt"), "none");
   assert.equal(url.searchParams.get("login_hint"), "a@b.dk");
 });
 
-test("isConnected: flaget vinder, ellers gættes ud fra e-mail eller token", () => {
+test("isConnected prefers the explicit flag and falls back to email or token", () => {
   assert.equal(isConnected({ googleConnected: false, loginHint: "a@b.dk" }), false);
   assert.equal(isConnected({ googleConnected: true }), true);
   assert.equal(isConnected({ loginHint: "a@b.dk" }), true);

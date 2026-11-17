@@ -1,20 +1,19 @@
-// Service worker: styrer Google-login, kalenderkald og selve synkroniseringen.
+// Service worker coordinating Google sign-in, calendar requests, and schedule synchronization.
 import { buildPlan, contentHash, eventBody, isSafeSchedule, isSuspiciousDrop, MANAGED_HASH, MANAGED_KEY } from "./sync.js";
-import "./config.js";   // opsætning (se config.js)
-import "./errors.js";   // fejlkoder (se errors.js)
+import "./config.js"; // Load shared extension settings.
+import "./errors.js"; // Load shared error codes and status helpers.
 import { buildAuthUrl, isConnected, isTokenFresh, parseAuthRedirect, REVOKE_URL, USERINFO_URL, withTokenRetry } from "./auth.js";
 import { resolveSettings } from "./settings.js";
 import { appendHistory, createHistoryEntry } from "./history.js";
 import { createSyncLock } from "./sync-lock.js";
 import { addPartialProgressToStatus, createSyncProgress } from "./sync-progress.js";
 
-// Client ID (fra config.js). Skal være en OAuth-klient af typen "Web application", og
-// redirect-URI'en fra `chrome.identity.getRedirectURL()` skal være tilføjet i Google Cloud Console.
-const CONFIG = globalThis.STUDIESYNC_CONFIG;   // alle indstillinger ligger i config.js
+// The configured web OAuth client must allow chrome.identity's redirect URL.
+const CONFIG = globalThis.STUDIESYNC_CONFIG; // Shared defaults and integration settings.
 const CLIENT_ID = CONFIG.googleClientId;
 
 const ALARM_NAME = "studiesync-auto-sync";
-const syncLock = createSyncLock();   // navnet på den tilbagevendende alarm
+const syncLock = createSyncLock(); // Serialize manual and scheduled sync requests.
 
 // Indstillinger: standardværdierne fra config.js, med det brugeren har valgt i menuen "Indstillinger" ovenpå
 async function getSettings() {
