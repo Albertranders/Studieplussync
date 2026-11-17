@@ -1,15 +1,9 @@
 // ============================================================================
-//  StudieSync – FEJLKODER
-//  Alle fejl har en kode (E101, E301 osv.). Koden vises i popup'en sammen med
-//  "Kontakt udvikleren". Tabellen herunder er også gengivet i README.md
-//  (der er en test, som tjekker, at de to er ens).
-//
-//  Kodernes grupper:
-//   E1xx  Google-login og opsætning        E4xx  Tolkning af Studie+-data
-//   E2xx  Google Kalender                  E5xx  Beskyttelse af kalenderen
-//   E3xx  Forbindelse til Studie+          E9xx  Andet
-//
-//  text = vises i popup'en.  fix = hvad brugeren selv kan prøve (kun README).
+// Central error catalog. Codes are displayed in the popup and documented in
+// README.md; a test checks that the two lists stay synchronized.
+// E1xx: Google sign-in; E2xx: Google Calendar; E3xx: Studie+ connection;
+// E4xx: schedule parsing; E5xx: calendar protection; E9xx: other errors.
+// `text` is shown in the popup; `fix` describes user troubleshooting steps.
 // ============================================================================
 
 (() => {
@@ -56,8 +50,7 @@
     E999: { text: "Ukendt fejl.", fix: "Kontakt udvikleren, og oplys fejlkoden og den tekniske tekst." }
   };
 
-  // En fejl med kode. Koden står i beskeden som "[E301] ...", så den overlever, når
-  // fejlen sendes mellem Studie+-fanen, baggrundsscriptet og popup'en som tekst.
+  // Embed the code in the message so it survives text-only message passing.
   class StudySyncError extends Error {
     constructor(code, technical = "") {
       super(`[${code}] ${technical}`.trim());
@@ -66,7 +59,7 @@
     }
   }
 
-  // Finder koden i en fejl (eller E999 hvis den ikke har en) og tekniske detaljer
+  // Extract a known code and bounded technical details from an arbitrary error.
   function describe(error) {
     const raw = String(error?.message ?? error ?? "");
     let code = raw.match(/\[(E\d{3})\]/)?.[1];
@@ -76,7 +69,7 @@
     return { code, text: CODES[code].text, technical };
   }
 
-  // Laver den status, popup'en viser: fejlkode, kort tekst og "Kontakt udvikleren"
+  // Build the user-facing failure status shown in the popup.
   function toStatus(error) {
     const { code, text, technical } = describe(error);
     const contact = globalThis.STUDIESYNC_CONFIG?.developerContact;

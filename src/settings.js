@@ -1,14 +1,13 @@
-// Brugerens indstillinger fra menuen "Indstillinger". Ren logik uden browser-API'er (kan testes med `npm test`).
-// Standardværdierne står i config.js. Det brugeren vælger i popup'en gemmes i chrome.storage.local
-// og vinder over config.js.
+// Pure settings logic for the popup, with no browser APIs so it can be tested independently.
+// Defaults come from config.js; saved user choices override those defaults.
 
-// Valgmuligheder i rullemenuerne
+// Available values for the settings dropdowns.
 export const WEEK_CHOICES = [1, 2, 3, 4, 5, 6, 8, 10, 12];
 export const INTERVAL_CHOICES = [15, 30, 60, 120];
-// Udseende: "auto" følger browserens/systemets lyse eller mørke tema (det samme som Google bruger)
+// "Auto" follows the browser or system light/dark appearance.
 export const THEME_CHOICES = [["auto", "Automatisk"], ["light", "Lys"], ["dark", "Mørk"]];
 
-// Tidszonens forskydning fra UTC i minutter på et givet tidspunkt (tager højde for sommertid)
+// Return the zone's UTC offset at a specific instant, including daylight-saving changes.
 export function timeZoneOffsetMinutes(zone, date = new Date()) {
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone: zone, hourCycle: "h23",
@@ -19,7 +18,7 @@ export function timeZoneOffsetMinutes(zone, date = new Date()) {
   return Math.round((asUtc - Math.floor(date.getTime() / 1000) * 1000) / 60000);
 }
 
-// "GMT", "GMT+1", "GMT-5", "GMT+5:30"
+// Format an offset as a compact GMT label.
 export function formatOffset(minutes) {
   if (!minutes) return "GMT";
   const abs = Math.abs(minutes);
@@ -27,12 +26,12 @@ export function formatOffset(minutes) {
   return `GMT${minutes < 0 ? "-" : "+"}${Math.floor(abs / 60)}${m ? ":" + String(m).padStart(2, "0") : ""}`;
 }
 
-// Rullemenuens tekst, fx "(GMT+1) Europe/Copenhagen"
+// Build the label displayed for a time-zone option.
 export function timeZoneLabel(zone, date = new Date()) {
   return `(${formatOffset(timeZoneOffsetMinutes(zone, date))}) ${zone.replaceAll("_", " ")}`;
 }
 
-// Tidszonerne som [navn, tekst], sorteret efter forskydning og derefter navn
+// Return labeled time zones ordered by UTC offset and then zone name.
 export function timeZoneOptions(zones, date = new Date()) {
   return zones
     .map(zone => ({ zone, offset: timeZoneOffsetMinutes(zone, date) }))
@@ -40,8 +39,8 @@ export function timeZoneOptions(zones, date = new Date()) {
     .map(({ zone }) => [zone, timeZoneLabel(zone, date)]);
 }
 
-// Lægger de gemte valg oven på standardværdierne fra config.js og retter ugyldige værdier.
-// `stored` = rå værdier fra chrome.storage.local, `defaults` = globalThis.STUDIESYNC_CONFIG.
+// Merge saved choices with defaults and replace invalid stored values with safe defaults.
+// `stored` contains raw storage values; `defaults` is the extension configuration.
 export function resolveSettings(stored = {}, defaults = {}) {
   const browserTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const defaultTimeZone = defaults.timeZone || browserTimeZone || "Europe/Copenhagen";
@@ -51,7 +50,7 @@ export function resolveSettings(stored = {}, defaults = {}) {
     new Intl.DateTimeFormat("en", { timeZone: candidateTimeZone });
     timeZone = candidateTimeZone;
   } catch {
-    // Ugyldig tidszone: brug browserens standard.
+    // An invalid zone falls back to the configured browser-default zone.
   }
   const maxWeeks = Math.max(1, Number(defaults.maxWeeks) || 12);
   const defaultWeeks = Math.max(1, Math.min(maxWeeks, Number(defaults.defaultWeeks) || 4));
@@ -69,7 +68,7 @@ export function resolveSettings(stored = {}, defaults = {}) {
   };
 }
 
-// Teksten under hovedknappen, fx "Automatisk synkronisering kører hvert 30. minut, mens browseren er åben."
+// Describe the configured automatic-sync interval beneath the main action button.
 export function autoSyncText(settings) {
   if (!settings.autoSync) return "Automatisk synkronisering er slået fra.";
   const m = settings.autoSyncMinutes;

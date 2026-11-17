@@ -1,21 +1,19 @@
-// Rene hjælpefunktioner til Google-login i browsere uden Chromes eget login (fx Opera og Edge).
-// Ingen chrome.*-kald her, så filen kan testes med `npm test`.
+// Pure helpers for Google sign-in in browsers without Chrome's built-in identity flow.
+// This module avoids chrome.* APIs so its behavior can be tested with `npm test`.
 
-// Skal passe til en OAuth-klient af typen "Web application" i Google Cloud Console.
-import "./errors.js";   // fejlkoder (se errors.js)
+// The OAuth client must be configured as a "Web application" in Google Cloud Console.
+import "./errors.js"; // Load the shared error class used for invalid OAuth responses.
 export const AUTH_ENDPOINT = "https://accounts.google.com/o/oauth2/v2/auth";
 export const SCOPE = "https://www.googleapis.com/auth/calendar.app.created";
-// "openid email" bruges kun til at huske, HVILKEN Google-konto du loggede ind med (se loginHint herunder).
+// OpenID scopes identify the account used for future silent token refreshes.
 export const SCOPES = ["openid", "email", SCOPE];
 export const USERINFO_URL = "https://www.googleapis.com/oauth2/v3/userinfo";
-// Bruges ved "Log ud af Google": tilbagekalder adgangen hos Google
+// Revoke the current account's grant when the user explicitly signs out.
 export const REVOKE_URL = "https://oauth2.googleapis.com/revoke";
 
-// Bygger URL'en til Googles login-side (implicit flow, token returneres i redirect-URL'ens #-del).
-// `loginHint` = e-mailen fra sidst. Så ved Google hvilken konto der menes, og viser hverken
-// kontovælger eller login igen. Det gør den stille fornyelse (prompt=none) pålidelig,
-// også når flere Google-konti er logget ind i browseren.
-// `selectAccount` = vis altid kontovælgeren (bruges ved "Forbind" og "Skift Google-konto").
+// Build Google's authorization URL, including account-selection hints when requested.
+// `loginHint` keeps silent refreshes tied to the previously connected account.
+// `selectAccount` forces the account chooser for connect and switch-account actions.
 export function buildAuthUrl({ clientId, redirectUri, state, interactive = true, loginHint = "", selectAccount = false }) {
   const params = new URLSearchParams({
     client_id: clientId,
@@ -27,21 +25,19 @@ export function buildAuthUrl({ clientId, redirectUri, state, interactive = true,
   });
   const choose = interactive && selectAccount;
   if (loginHint && !choose) params.set("login_hint", loginHint);
-  // Ved automatisk kørsel må Google ikke vise noget; så fejler kaldet stille i stedet for.
+  // Background refreshes must not open a window, so ask Google to fail silently.
   if (!interactive) params.set("prompt", "none");
   else if (choose) params.set("prompt", "select_account");
   return `${AUTH_ENDPOINT}?${params}`;
 }
 
-// Er en Google-konto forbundet? Flaget `googleConnected` sættes ved login og fjernes ved logud.
-// Findes det ikke (installationer fra før menuen kom), regnes kontoen som forbundet, hvis der
-// er en gemt e-mail eller et gemt token.
+// Prefer the explicit connection flag, while retaining compatibility with older installations.
 export function isConnected({ googleConnected, loginHint, webToken } = {}) {
   if (typeof googleConnected === "boolean") return googleConnected;
   return Boolean(loginHint || webToken?.token);
 }
 
-// Læser svaret fra redirect-URL'en. Returnerer { token, expiresAt } eller kaster en forståelig fejl.
+// Validate the OAuth redirect and return its access token and expiration timestamp.
 export function parseAuthRedirect(redirectUrl, expectedState, now = Date.now()) {
   if (!redirectUrl) throw new StudySyncError("E102", "Google-login blev afbrudt.");
   const hash = new URL(redirectUrl).hash.replace(/^#/, "");
@@ -54,9 +50,8 @@ export function parseAuthRedirect(redirectUrl, expectedState, now = Date.now()) 
   return { token, expiresAt: now + seconds * 1000 };
 }
 
-// Kører `work(token)`. Afviser Google tokenet (fejl med status 401), hentes et nyt token,
-// og arbejdet prøves én gang til. Så klarer en udløbet session sig selv i samme kørsel.
-// `getToken` skal selv sørge for, at det afviste token ikke bruges igen (det ryddes i background.js).
+// Retry work once with a fresh token when Google rejects the current one with HTTP 401.
+// `getToken` must invalidate rejected tokens before returning a replacement.
 export async function withTokenRetry(getToken, work) {
   try {
     return await work(await getToken());
@@ -66,7 +61,7 @@ export async function withTokenRetry(getToken, work) {
   }
 }
 
-// Er et gemt token stadig gyldigt (med 60 sekunders sikkerhedsmargin)?
+// Treat tokens expiring within 60 seconds as stale to avoid mid-request expiration.
 export function isTokenFresh(cached, now = Date.now()) {
   return Boolean(cached?.token) && cached.expiresAt - 60_000 > now;
 }

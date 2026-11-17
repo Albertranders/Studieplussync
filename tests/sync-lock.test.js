@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createSyncLock } from "../src/sync-lock.js";
 
+// Verify exclusive acquisition, idempotent release, and subsequent reuse of the lock.
 test("allows the first synchronization to acquire the lock", () => {
   const lock = createSyncLock();
   const release = lock.tryAcquire();

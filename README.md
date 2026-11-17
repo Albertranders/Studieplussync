@@ -16,6 +16,7 @@ Browserudvidelse, der læser dit skema fra en åben Studie+-session og synkronis
 
 - [Privatlivspolitik](PRIVACY.md)
 - [Chrome Web Store-materiale](docs/CHROME_WEB_STORE.md)
+- [Kom godt i gang](docs/GETTING_STARTED.md)
 - [Roadmap og opgaveliste](docs/ROADMAP.md)
 - [Fejlfinding og diagnosticering](docs/DIAGNOSTICS.md)
 - [Ændringslog](CHANGELOG.md)
@@ -68,6 +69,7 @@ Google kan vise "Google har ikke verificeret denne app". Vælg **Avanceret** og 
 
 De tre prikker i øverste højre hjørne åbner menuen:
 
+- **Dashboard**: oversigt med næste lektion, forbindelse og seneste synkronisering. Introduktionsguiden åbner automatisk, indtil den er gennemført, og kan åbnes igen under **Indstillinger**.
 - **Indstillinger**: antal uger der indlæses, automatisk synkronisering til/fra og hvor ofte, tidszone (vist som fx `(GMT+1) Europe/Copenhagen`), udseende (Automatisk, Lys eller Mørk) og kalenderens navn. **Automatisk** følger browserens lyse eller mørke tema, så popup'en matcher Chrome og Google. Skifter du tidszone, rettes tidspunkterne i kalenderen ved næste synkronisering. Ændringer gemmes med det samme og vinder over `src/config.js`. **Nulstil til config.js** fjerner dine valg igen.
 - **Test Studie+ forbindelsen**: tjekker, at udvidelsen kan læse skemaet, uden at røre kalenderen.
 - **Skift Google-konto** og **Log ud af Google**: vises, når en konto er forbundet (med den forbundne e-mail øverst). Logud tilbagekalder adgangen hos Google og glemmer login og e-mail i browseren. Kalenderen "Studie+ skema" og dens begivenheder bliver liggende i Google. Forbind en anden konto med **Skift Google-konto**, eller log ud og vælg **Forbind Google Kalender**. Skifter du til en anden konto, oprettes der en ny "Studie+ skema"-kalender dér.

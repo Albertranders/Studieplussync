@@ -1,20 +1,19 @@
-// Service worker: styrer Google-login, kalenderkald og selve synkroniseringen.
+// Service worker coordinating Google sign-in, calendar requests, and schedule synchronization.
 import { buildPlan, contentHash, eventBody, isSafeSchedule, isSuspiciousDrop, MANAGED_HASH, MANAGED_KEY } from "./sync.js";
-import "./config.js";   // opsætning (se config.js)
-import "./errors.js";   // fejlkoder (se errors.js)
+import "./config.js"; // Load shared extension settings.
+import "./errors.js"; // Load shared error codes and status helpers.
 import { buildAuthUrl, isConnected, isTokenFresh, parseAuthRedirect, REVOKE_URL, USERINFO_URL, withTokenRetry } from "./auth.js";
 import { resolveSettings } from "./settings.js";
 import { appendHistory, createHistoryEntry } from "./history.js";
 import { createSyncLock } from "./sync-lock.js";
 import { addPartialProgressToStatus, createSyncProgress } from "./sync-progress.js";
 
-// Client ID (fra config.js). Skal være en OAuth-klient af typen "Web application", og
-// redirect-URI'en fra `chrome.identity.getRedirectURL()` skal være tilføjet i Google Cloud Console.
-const CONFIG = globalThis.STUDIESYNC_CONFIG;   // alle indstillinger ligger i config.js
+// The configured web OAuth client must allow chrome.identity's redirect URL.
+const CONFIG = globalThis.STUDIESYNC_CONFIG; // Shared defaults and integration settings.
 const CLIENT_ID = CONFIG.googleClientId;
 
 const ALARM_NAME = "studiesync-auto-sync";
-const syncLock = createSyncLock();   // navnet på den tilbagevendende alarm
+const syncLock = createSyncLock(); // Serialize manual and scheduled sync requests.
 
 // Indstillinger: standardværdierne fra config.js, med det brugeren har valgt i menuen "Indstillinger" ovenpå
 async function getSettings() {
@@ -270,6 +269,29 @@ async function getManagedEvents(token, calendarId, timeMin, timeMax) {
   return events.filter(event => event.extendedProperties?.private?.[MANAGED_KEY]);
 }
 
+// Henter næste kommende lektion fra den kalender, StudieSync selv administrerer.
+async function dashboardData() {
+  const { calendarId } = await storageGet(["calendarId"]);
+  if (!calendarId) return { nextLesson: null };
+  const result = await withTokenRetry(() => googleToken(false), token => {
+    const now = new Date();
+    const until = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+    const params = new URLSearchParams({
+      singleEvents: "true", showDeleted: "false", orderBy: "startTime",
+      maxResults: "1", timeMin: now.toISOString(), timeMax: until.toISOString()
+    });
+    return googleRequest(token, `/calendars/${encodeURIComponent(calendarId)}/events?${params}`);
+  });
+  const event = result.items?.[0];
+  if (!event) return { nextLesson: null };
+  return { nextLesson: {
+    summary: event.summary || "Lektion",
+    start: event.start?.dateTime || event.start?.date || "",
+    end: event.end?.dateTime || event.end?.date || "",
+    location: event.location || ""
+  } };
+}
+
 // --- Kommunikation med Studie+-fanen ---
 
 // Finder en åben, ikke-sovende Studie+-fane (content-scriptet kører dér)
@@ -469,6 +491,11 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   // Hent seneste status til visning i popup'en
   if (message?.type === "STUDIESYNC_STATUS") {
     storageGet(["lastStatus", "lastUpdated", "calendarId"]).then(sendResponse);
+    return true;
+  }
+  // Hent næste lektion til dashboardet
+  if (message?.type === "STUDIESYNC_DASHBOARD") {
+    dashboardData().then(sendResponse).catch(() => sendResponse({ nextLesson: null }));
     return true;
   }
   // Hent synkroniseringshistorikken.

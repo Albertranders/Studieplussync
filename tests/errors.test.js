@@ -4,6 +4,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import "../src/config.js";
 import "../src/errors.js";
 const { CODES, describe, toStatus } = globalThis.STUDIESYNC_ERRORS;
+// Keep runtime error mapping and the README error-code table consistent.
 test("koden overlever som tekst og findes igen",()=>{const error=new globalThis.StudySyncError("E301");assert.equal(describe(error).code,"E301");assert.equal(describe(new Error(error.message)).code,"E301");});
 test("status indeholder fejlkode og 'Kontakt udvikleren'",()=>{const status=toStatus(new globalThis.StudySyncError("E401","Ugyldigt GWT-svar."));assert.equal(status.ok,false);assert.equal(status.code,"E401");assert.match(status.message,/^Fejl E401: /);assert.match(status.detail,/Kontakt udvikleren/);assert.match(status.detail,/Ugyldigt GWT-svar\./);});
 test("fejl uden kode bliver E999, netværksfejl bliver E901",()=>{assert.equal(describe(new Error("noget andet")).code,"E999");assert.equal(describe(new TypeError("Failed to fetch")).code,"E901");assert.equal(describe(new Error("[E777] findes ikke")).code,"E999");});

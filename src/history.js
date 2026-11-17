@@ -1,5 +1,6 @@
 export const HISTORY_LIMIT = 20;
 
+// Normalize a sync result into a compact, bounded history record.
 export function createHistoryEntry(status, trigger = "manual", at = new Date().toISOString()) {
   const counts = status?.counts;
   return {
@@ -20,6 +21,7 @@ export function createHistoryEntry(status, trigger = "manual", at = new Date().t
   };
 }
 
+// Keep only well-formed recent entries and enforce a safe storage limit.
 export function appendHistory(history, entry, limit = HISTORY_LIMIT) {
   const previous = Array.isArray(history) ? history.filter(item => item && typeof item.at === "string" && typeof item.ok === "boolean") : [];
   const safeLimit = Math.max(1, Math.min(100, Math.floor(Number(limit) || HISTORY_LIMIT)));

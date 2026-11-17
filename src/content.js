@@ -1,16 +1,15 @@
-// Content-script: kører inde på Studie+-siden og læser skemaet.
-// Selve hentningen sker via gwt.js (window.StudySyncGwt); den DOM-baserede læsning
-// af den synlige side (SVG) findes stadig her, men bruges ikke af extractLessons.
+// Run in the Studie+ page to read schedules and respond to extension messages.
+// Schedule extraction uses the GWT module; the visible-SVG reader remains as a helper.
 (() => {
   "use strict";
   const CONFIG = globalThis.STUDIESYNC_CONFIG;   // indstillinger fra config.js
 
-  // Danske ugedage -> JavaScripts dagnummer (søndag = 0)
+  // Map Danish weekday abbreviations to JavaScript weekday numbers (Sunday is zero).
   const DAY_NAMES = {
     man: 1, tir: 2, ons: 3, tor: 4, fre: 5, "lør": 6, "søn": 0
   };
 
-  // Referencedato: en dato i URL'en (fx 2026-11-10) hvis der er en, ellers i dag (i UTC)
+  // Use a date in the page URL as the reference date, or today's UTC date as fallback.
   function referenceDate() {
     const match = location.href.match(/(20\d{2})-(\d{1,2})-(\d{1,2})/);
     if (match) return new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
@@ -18,9 +17,7 @@
     return new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
   }
 
-  // Oversætter en kolonneoverskrift som "tir 10/11" til en dato ("2026-11-10").
-  // Årstallet er ikke i overskriften, så vi vælger det år, hvor ugedagen passer
-  // og datoen ligger tættest på referencedatoen.
+  // Resolve a weekday/date header to the nearest matching calendar date.
   function dateFromHeader(label, reference) {
     const match = label.trim().match(/^(man|tir|ons|tor|fre|lør|søn)\s+(\d{1,2})\/(\d{1,2})$/i);
     if (!match) return "";
@@ -41,7 +38,7 @@
     return [chosen.getUTCFullYear(), String(chosen.getUTCMonth() + 1).padStart(2, "0"), String(chosen.getUTCDate()).padStart(2, "0")].join("-");
   }
 
-  // Læser dagskolonnerne i skemaet: dato samt kolonnens midte og bredde på skærmen
+  // Read each schedule date column and its screen position.
   function readDateColumns(reference) {
     return [...document.querySelectorAll("th.fc-widget-header")].map(header => {
       const label = header.querySelector(".gwt-Label")?.textContent?.trim() || "";
@@ -52,7 +49,7 @@
     }).filter(Boolean);
   }
 
-  // Henter alle tekster (med position) fra en SVG-lektionsboks
+  // Collect text and coordinates from an SVG lesson group.
   function readSvgText(node) {
     return [...node.querySelectorAll("text")].map(element => ({
       text: (element.textContent || "").replace(/\s+/g, " ").trim(),
@@ -61,7 +58,7 @@
     })).filter(item => item.text);
   }
 
-  // Finder hvilken dagskolonne en lektionsboks ligger i (nærmeste kolonne-midte)
+  // Match a lesson group to the closest date-column center.
   function nearestDate(node, columns) {
     const matrix = node.getScreenCTM?.();
     const rect = node.querySelector("rect");
@@ -78,7 +75,7 @@
     return nearest.column.date;
   }
 
-  // Omsætter én SVG-lektionsboks til et lektionsobjekt (eller null hvis den ikke kan læses)
+  // Parse one visible SVG lesson group, returning null when required fields are missing.
   function parseLesson(node, columns) {
     const texts = readSvgText(node);
     // Teksten med tidsrummet, fx "08:15 - 09:45"
@@ -103,7 +100,7 @@
     return { id: [date, start, subject, room, teacher, classCode].join("|"), date, start, end, subject, room, teacher, homework: "", note: "" };
   }
 
-  // Læser alle synlige lektioner direkte fra siden
+  // Read and sort all lessons currently visible on the page.
   function readVisibleLessons() {
     const reference = referenceDate();
     const columns = readDateColumns(reference);
@@ -123,12 +120,12 @@
     return lessons;
   }
 
-  // Formaterer en dato som "ÅÅÅÅ-MM-DD" (lokal tid)
+  // Format a local date as YYYY-MM-DD.
   function formatDate(date) {
     return [date.getFullYear(), String(date.getMonth() + 1).padStart(2, "0"), String(date.getDate()).padStart(2, "0")].join("-");
   }
 
-  // Periode der skal hentes: fra mandag i denne uge og `weeks` uger frem (1-12, standard 4)
+  // Calculate the schedule range from this week's Monday for the requested number of weeks.
   function scheduleRange(weeks) {
     const count = Math.max(1, Math.min(CONFIG.maxWeeks, Number(weeks) || CONFIG.defaultWeeks));
     const start = new Date();
@@ -139,7 +136,7 @@
     return { start: formatDate(start), end: formatDate(end) };
   }
 
-  // Tester forbindelsen ved at hente skemaet og tælle lektionerne
+  // Verify the connection by fetching the schedule and counting lessons.
   async function testConnection(weeks) {
     if (!window.StudySyncGwt) throw new StudySyncError("E303", "GWT-modulet blev ikke indlæst. Genindlæs Studie+ fanen.");
     const range = scheduleRange(weeks);
@@ -147,7 +144,7 @@
     return { ...result, lessonCount: result.lessons?.length || 0, dateRange: range };
   }
 
-  // Henter lektionerne via GWT-modulet. Fejl samles i `gwt`, så kalderen kan vise dem
+  // Fetch lessons through the GWT module and return any extraction error to the caller.
   async function extractLessons(weeks) {
     const range = scheduleRange(weeks);
     let gwt = { ok: false, error: new StudySyncError("E303", "GWT-modulet blev ikke indlæst.").message };
@@ -158,7 +155,7 @@
     return { lessons: gwt.ok && Array.isArray(gwt.lessons) ? gwt.lessons : [], gwt, dateRange: range };
   }
 
-  // Lytter efter beskeder fra baggrundsscriptet. `return true` = svaret sendes asynkront
+  // Handle asynchronous messages from the extension service worker.
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     // Testkald: bare tæl lektioner
     if (message?.type === "STUDIESYNC_TEST_CONNECTION") {

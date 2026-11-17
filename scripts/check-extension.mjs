@@ -11,3 +11,4 @@ for(const [,attr] of html.matchAll(/(?:src|href)="([^"]+)"/g)){if(/^(?:https?:|d
 const src=path.join(root,"src");
 for(const file of ["background.js","auth.js","config.js","content.js","errors.js","gwt.js","popup.js","settings.js","sync.js"]){const full=path.join(src,file);assert.ok(existsSync(full),`Runtime-fil mangler: ${file}`);const text=readFileSync(full,"utf8");for(const [,specifier] of text.matchAll(/(?:from\s*|import\s*)["'](\.[^"']+)["']/g)){const target=path.resolve(src,specifier);assert.ok(target.startsWith(src+path.sep));assert.ok(existsSync(target),`Import mangler: ${file} -> ${specifier}`);}}
 console.log("Manifest, popup-stier og runtime-imports er gyldige.");
+// Check that manifest entries, popup assets, and runtime imports resolve inside the extension.
