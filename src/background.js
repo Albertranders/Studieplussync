@@ -270,6 +270,29 @@ async function getManagedEvents(token, calendarId, timeMin, timeMax) {
   return events.filter(event => event.extendedProperties?.private?.[MANAGED_KEY]);
 }
 
+// Henter næste kommende lektion fra den kalender, StudieSync selv administrerer.
+async function dashboardData() {
+  const { calendarId } = await storageGet(["calendarId"]);
+  if (!calendarId) return { nextLesson: null };
+  const result = await withTokenRetry(() => googleToken(false), token => {
+    const now = new Date();
+    const until = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+    const params = new URLSearchParams({
+      singleEvents: "true", showDeleted: "false", orderBy: "startTime",
+      maxResults: "1", timeMin: now.toISOString(), timeMax: until.toISOString()
+    });
+    return googleRequest(token, `/calendars/${encodeURIComponent(calendarId)}/events?${params}`);
+  });
+  const event = result.items?.[0];
+  if (!event) return { nextLesson: null };
+  return { nextLesson: {
+    summary: event.summary || "Lektion",
+    start: event.start?.dateTime || event.start?.date || "",
+    end: event.end?.dateTime || event.end?.date || "",
+    location: event.location || ""
+  } };
+}
+
 // --- Kommunikation med Studie+-fanen ---
 
 // Finder en åben, ikke-sovende Studie+-fane (content-scriptet kører dér)
@@ -472,6 +495,10 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     return true;
   }
   // Hent synkroniseringshistorikken.
+  if (message?.type === "STUDIESYNC_DASHBOARD") {
+    dashboardData().then(sendResponse).catch(() => sendResponse({ nextLesson: null }));
+    return true;
+  }
   if (message?.type === "STUDIESYNC_HISTORY") {
     storageGet(["syncHistory"]).then(result => sendResponse(result.syncHistory || []));
     return true;
