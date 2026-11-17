@@ -132,3 +132,41 @@ button.link { display: block; margin: 6px auto 0; padding: 6px; border: 0; backg
 .history-good { color: var(--good); }
 .history-bad { color: var(--bad); }
 .history-empty { color: var(--muted); font-size: 11.5px; padding: 8px 2px; }
+
+/* Dashboard */
+body { width: 370px; max-height: 620px; overflow-y: auto; }
+.dashboard-heading { display:flex; align-items:end; justify-content:space-between; margin: 8px 1px 12px; }
+.dashboard-heading h2 { margin:2px 0 0; font-size:19px; letter-spacing:-.3px; }
+.eyebrow { margin:0; color:var(--muted); font-size:9px; font-weight:750; letter-spacing:1.1px; }
+.version { color:var(--foot); font-size:10px; }
+.dashboard-grid { display:grid; grid-template-columns:1fr 1fr; gap:9px; margin-bottom:12px; }
+.dashboard-card { min-width:0; display:flex; gap:9px; align-items:flex-start; padding:12px; background:var(--card); border:1px solid var(--line); border-radius:12px; }
+.connection-card,.sync-card { min-height:91px; }
+.card-icon { width:28px; height:28px; display:grid; place-items:center; flex:none; border-radius:9px; background:var(--mark-bg); color:var(--accent-text); font-size:17px; font-weight:700; }
+.card-label { margin:0 0 5px; color:var(--muted); font-size:10.5px; }
+.dashboard-card strong { display:block; font-size:12px; line-height:1.35; overflow-wrap:anywhere; }
+.card-detail { margin:4px 0 0; color:var(--foot); font-size:10.5px; line-height:1.35; overflow-wrap:anywhere; }
+.next-card { grid-column:1 / -1; display:block; padding:14px; }
+.next-top { display:flex; justify-content:space-between; gap:10px; align-items:flex-start; }
+.next-subject { font-size:16px !important; }
+.next-badge { padding:4px 7px; border-radius:7px; background:var(--mark-bg); color:var(--accent-text); font-size:10px; white-space:nowrap; }
+.next-time { margin:9px 0 0; font-size:13px; font-weight:650; }
+.dashboard-actions { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:10px; }
+button.secondary { padding:9px 12px; border:1px solid var(--input-line); border-radius:9px; background:var(--card); color:var(--text); font:inherit; font-size:12px; font-weight:600; cursor:pointer; }
+button.secondary:hover { background:var(--hover); }
+.dashboard-actions .link { margin:0; }
+.settings-heading { margin:15px 2px 7px; color:var(--muted); font-size:10px; text-transform:uppercase; letter-spacing:.8px; }
+.settings-heading:first-of-type { margin-top:4px; }
+/* First-run guide */
+.guide-progress { height:4px; overflow:hidden; border-radius:4px; background:var(--line); margin:5px 1px 18px; }
+.guide-progress span { display:block; height:100%; width:25%; border-radius:4px; background:var(--accent); transition:width .2s ease; }
+.guide-content { min-height:300px; padding:18px 16px; background:var(--card); border:1px solid var(--line); border-radius:14px; }
+.guide-icon { width:42px; height:42px; display:grid; place-items:center; margin:18px 0 15px; border-radius:13px; background:var(--mark-bg); color:var(--accent-text); font-size:20px; font-weight:750; }
+.guide-content h3 { margin:0 0 9px; font-size:18px; }
+.guide-body { margin:0; color:var(--muted); font-size:12.5px; line-height:1.6; }
+.guide-tip { margin-top:16px; padding:10px 11px; border-radius:9px; background:var(--bg); color:var(--muted); font-size:11.5px; line-height:1.5; }
+.guide-actions { display:flex; justify-content:space-between; gap:10px; margin-top:14px; }
+.guide-actions button { flex:1; }
+.guide-next { width:auto !important; }
+.guide-skip { margin-top:8px !important; }
+button:disabled { opacity:.45; cursor:not-allowed !important; }
