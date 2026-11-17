@@ -172,7 +172,7 @@ button.secondary:hover { background:var(--hover); }
 button:disabled { opacity:.45; cursor:not-allowed !important; }
 
 /* Refined compact popup layout */
-html, body { width: 360px; max-height: 580px; overflow: hidden; }
+html, body { width: 420px; max-height: none; overflow: hidden; }
 body { min-height: 0; }
 main { padding: 2px 18px 14px; }
 .top { padding: 12px 16px 8px 18px; }
@@ -216,3 +216,10 @@ main { padding: 2px 18px 14px; }
 .guide-confirm input { width:16px; height:16px; accent-color:var(--accent); margin:0; }
 .guide-actions { margin-top:12px; }
 .guide-actions button { padding:10px; }
+
+/* Slightly larger popup and guide action button */
+html, body { width: 420px; max-height: none; overflow: hidden; }
+.guide-content { padding: 17px 18px; }
+.guide-action { margin-top: 14px; }
+.guide-confirm { margin-top: 12px; }
+.guide-tip { line-height: 1.45; }
