@@ -5,6 +5,40 @@
 // Valgmuligheder i rullemenuerne
 export const WEEK_CHOICES = [1, 2, 3, 4, 5, 6, 8, 10, 12];
 export const INTERVAL_CHOICES = [15, 30, 60, 120];
+// Udseende: "auto" følger browserens/systemets lyse eller mørke tema (det samme som Google bruger)
+export const THEME_CHOICES = [["auto", "Automatisk"], ["light", "Lys"], ["dark", "Mørk"]];
+
+// Tidszonens forskydning fra UTC i minutter på et givet tidspunkt (tager højde for sommertid)
+export function timeZoneOffsetMinutes(zone, date = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: zone, hourCycle: "h23",
+    year: "numeric", month: "numeric", day: "numeric", hour: "numeric", minute: "numeric", second: "numeric"
+  }).formatToParts(date);
+  const get = type => Number(parts.find(p => p.type === type).value);
+  const asUtc = Date.UTC(get("year"), get("month") - 1, get("day"), get("hour"), get("minute"), get("second"));
+  return Math.round((asUtc - Math.floor(date.getTime() / 1000) * 1000) / 60000);
+}
+
+// "GMT", "GMT+1", "GMT-5", "GMT+5:30"
+export function formatOffset(minutes) {
+  if (!minutes) return "GMT";
+  const abs = Math.abs(minutes);
+  const m = abs % 60;
+  return `GMT${minutes < 0 ? "-" : "+"}${Math.floor(abs / 60)}${m ? ":" + String(m).padStart(2, "0") : ""}`;
+}
+
+// Rullemenuens tekst, fx "(GMT+1) Europe/Copenhagen"
+export function timeZoneLabel(zone, date = new Date()) {
+  return `(${formatOffset(timeZoneOffsetMinutes(zone, date))}) ${zone.replaceAll("_", " ")}`;
+}
+
+// Tidszonerne som [navn, tekst], sorteret efter forskydning og derefter navn
+export function timeZoneOptions(zones, date = new Date()) {
+  return zones
+    .map(zone => ({ zone, offset: timeZoneOffsetMinutes(zone, date) }))
+    .sort((a, b) => a.offset - b.offset || a.zone.localeCompare(b.zone))
+    .map(({ zone }) => [zone, timeZoneLabel(zone, date)]);
+}
 
 // Lægger de gemte valg oven på standardværdierne fra config.js og retter ugyldige værdier.
 // `stored` = rå værdier fra chrome.storage.local, `defaults` = globalThis.STUDIESYNC_CONFIG.
@@ -30,6 +64,7 @@ export function resolveSettings(stored = {}, defaults = {}) {
     autoSync: stored.autoSync !== false,
     autoSyncMinutes: minutes >= 1 ? minutes : defaultMinutes,
     timeZone,
+    theme: THEME_CHOICES.some(([id]) => id === stored.theme) ? stored.theme : "auto",
     calendarName: (name || String(defaults.calendarName || "Studie+ skema")).slice(0, 100)
   };
 }

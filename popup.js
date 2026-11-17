@@ -1,5 +1,5 @@
 // Popup'ens logik: hovedvisning, menu og indstillinger.
-import { INTERVAL_CHOICES, WEEK_CHOICES, autoSyncText, resolveSettings } from "./settings.js";
+import { INTERVAL_CHOICES, THEME_CHOICES, WEEK_CHOICES, autoSyncText, resolveSettings, timeZoneOptions } from "./settings.js";
 
 const CONFIG = globalThis.STUDIESYNC_CONFIG;   // standardværdier fra config.js
 const $ = id => document.getElementById(id);
@@ -135,9 +135,16 @@ function fillTimeZones(selected) {
   const zones = typeof Intl.supportedValuesOf === "function" ? Intl.supportedValuesOf("timeZone") : [selected];
   if (!zones.includes("UTC")) zones.push("UTC");
   if (!zones.includes(selected)) zones.push(selected);
-  zones.sort((a, b) => a.localeCompare(b));
-  fillSelect(select, zones, zone => zone.replaceAll("_", " "));
+  // Tekst som "(GMT+1) Europe/Copenhagen", sorteret efter forskydning
+  select.innerHTML = "";
+  for (const [id, label] of timeZoneOptions(zones)) select.add(new Option(label, id));
   select.value = selected;
+}
+
+// Lyst/mørkt: "auto" lader browserens tema (prefers-color-scheme) bestemme, ellers tvinges valget
+function applyTheme(theme) {
+  if (theme === "light" || theme === "dark") document.documentElement.dataset.theme = theme;
+  else delete document.documentElement.dataset.theme;
 }
 
 function showSettings(settings) {
@@ -149,12 +156,15 @@ function showSettings(settings) {
   $("interval-row").classList.toggle("disabled", !settings.autoSync);
   $("calendarName").value = settings.calendarName;
   fillTimeZones(settings.timeZone);
+  fillSelect($("theme"), THEME_CHOICES.map(([id]) => id), id => THEME_CHOICES.find(([key]) => key === id)[1]);
+  $("theme").value = settings.theme;
+  applyTheme(settings.theme);
   $("autosync").textContent = autoSyncText(settings);
 }
 
 async function loadSettings() {
   return resolveSettings(
-    await chrome.storage.local.get(["scheduleWeeks", "autoSync", "autoSyncMinutes", "calendarName", "timeZone"]),
+    await chrome.storage.local.get(["scheduleWeeks", "autoSync", "autoSyncMinutes", "calendarName", "timeZone", "theme"]),
     CONFIG
   );
 }
@@ -173,18 +183,19 @@ async function saveSettings() {
     autoSync: $("autoSync").checked,
     autoSyncMinutes: $("interval").value,
     calendarName: $("calendarName").value,
-    timeZone: $("timeZone").value
+    timeZone: $("timeZone").value,
+    theme: $("theme").value
   }, CONFIG);
   await chrome.storage.local.set(settings);
   showSettings(settings);
   flashSaved("Gemt ✓");
   await message("STUDIESYNC_SETTINGS_CHANGED");
 }
-for (const id of ["weeks", "autoSync", "interval", "calendarName", "timeZone"]) $(id).addEventListener("change", saveSettings);
+for (const id of ["weeks", "autoSync", "interval", "calendarName", "timeZone", "theme"]) $(id).addEventListener("change", saveSettings);
 
 // Nulstil: fjern brugerens valg, så config.js gælder igen
 $("reset").addEventListener("click", async () => {
-  await chrome.storage.local.remove(["scheduleWeeks", "autoSync", "autoSyncMinutes", "calendarName", "timeZone"]);
+  await chrome.storage.local.remove(["scheduleWeeks", "autoSync", "autoSyncMinutes", "calendarName", "timeZone", "theme"]);
   showSettings(await loadSettings());
   flashSaved("Nulstillet ✓");
   await message("STUDIESYNC_SETTINGS_CHANGED");
