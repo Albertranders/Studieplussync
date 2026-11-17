@@ -1,16 +1,24 @@
 // Service worker: styrer Google-login, kalenderkald og selve synkroniseringen.
-import { buildPlan, contentHash, eventBody, isSafeSchedule, isSuspiciousDrop, MANAGED_HASH, MANAGED_KEY, TIME_ZONE } from "./sync.js";
+import { buildPlan, contentHash, eventBody, isSafeSchedule, isSuspiciousDrop, MANAGED_HASH, MANAGED_KEY } from "./sync.js";
 import "./config.js";   // opsætning (se config.js)
 import "./errors.js";   // fejlkoder (se errors.js)
-import { buildAuthUrl, isTokenFresh, parseAuthRedirect, USERINFO_URL, withTokenRetry } from "./auth.js";
+import { buildAuthUrl, isConnected, isTokenFresh, parseAuthRedirect, REVOKE_URL, USERINFO_URL, withTokenRetry } from "./auth.js";
+import { resolveSettings } from "./settings.js";
 
 // Client ID (fra config.js). Skal være en OAuth-klient af typen "Web application", og
 // redirect-URI'en fra `chrome.identity.getRedirectURL()` skal være tilføjet i Google Cloud Console.
 const CONFIG = globalThis.STUDIESYNC_CONFIG;   // alle indstillinger ligger i config.js
 const CLIENT_ID = CONFIG.googleClientId;
 
-const CALENDAR_NAME = CONFIG.calendarName;       // navnet på den kalender vi opretter
 const ALARM_NAME = "studiesync-auto-sync";   // navnet på den tilbagevendende alarm
+
+// Indstillinger: standardværdierne fra config.js, med det brugeren har valgt i menuen "Indstillinger" ovenpå
+async function getSettings() {
+  return resolveSettings(
+    await storageGet(["scheduleWeeks", "autoSync", "autoSyncMinutes", "calendarName", "timeZone"]),
+    CONFIG
+  );
+}
 
 // --- Små hjælpere til lagring og status ---
 
@@ -58,7 +66,8 @@ async function googleToken(interactive) {
 }
 
 // Beder Google om et nyt token. `interactive` = må der vises et login-vindue?
-async function requestToken(interactive) {
+// `selectAccount` = vis kontovælgeren (ved første forbindelse og ved "Skift Google-konto").
+async function requestToken(interactive, selectAccount = false) {
   const { loginHint } = await storageGet(["loginHint"]);
   const state = crypto.randomUUID();
   const url = buildAuthUrl({
@@ -66,7 +75,8 @@ async function requestToken(interactive) {
     redirectUri: chrome.identity.getRedirectURL(),
     state,
     interactive,
-    loginHint
+    loginHint,
+    selectAccount
   });
   let redirectUrl;
   try {
@@ -75,8 +85,8 @@ async function requestToken(interactive) {
     throw new StudySyncError("E102", error?.message || "Google-login mislykkedes.");
   }
   const fresh = parseAuthRedirect(redirectUrl, state);
-  await storageSet({ webToken: fresh });
-  if (!loginHint) await rememberAccount(fresh.token);
+  await storageSet({ webToken: fresh, googleConnected: true });
+  if (!loginHint || selectAccount) await rememberAccount(fresh.token);
   return fresh.token;
 }
 
@@ -98,17 +108,55 @@ async function rememberAccount(token) {
 // en STILLE fornyelse (uden vindue, virker hvis du allerede er logget ind på Google i browseren).
 // Kun hvis den fejler, og vi må vise noget (knaptryk), åbnes login-vinduet.
 async function webAuthFlowToken(interactive) {
-  const { webToken } = await storageGet(["webToken"]);
-  if (isTokenFresh(webToken)) return webToken.token;
+  const { webToken, googleConnected, loginHint } = await storageGet(["webToken", "googleConnected", "loginHint"]);
   if (CLIENT_ID.startsWith("INSERT")) {
     throw new StudySyncError("E101", "Mangler Client ID. Udfyld googleClientId i config.js (se README).");
   }
+  // Ingen forbundet konto (ny installation eller efter "Log ud af Google"): Google må aldrig
+  // forbindes i baggrunden. Kun et knaptryk (Forbind Google Kalender) åbner login med kontovælger.
+  if (!isConnected({ googleConnected, loginHint, webToken })) {
+    if (!interactive) throw new StudySyncError("E201", "Ingen Google-konto er forbundet.");
+    return requestToken(true, true);
+  }
+  if (isTokenFresh(webToken)) return webToken.token;
   try {
     return await requestToken(false);
   } catch (error) {
     if (!interactive) throw error;
   }
   return requestToken(true);
+}
+
+// Er en Google-konto forbundet, og hvilken? (til menuen i popup'en)
+async function authState() {
+  const stored = await storageGet(["googleConnected", "loginHint", "webToken"]);
+  return { connected: isConnected(stored), email: stored.loginHint || "" };
+}
+
+// "Log ud af Google": tilbagekalder adgangen hos Google og glemmer token og e-mail lokalt.
+// Kalenderen i Google og kalender-id'et beholdes, så samme konto kan forbindes igen uden en dublet.
+async function logoutGoogle() {
+  const { webToken } = await storageGet(["webToken"]);
+  await storageSet({ googleConnected: false });
+  if (webToken?.token) {
+    try {
+      await fetch(`${REVOKE_URL}?token=${encodeURIComponent(webToken.token)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" }
+      });
+    } catch {
+      // offline eller allerede udløbet: tokenet glemmes alligevel lokalt
+    }
+  }
+  await chrome.storage.local.remove(["webToken", "loginHint"]);
+  await chrome.action.setBadgeText({ text: "" });
+}
+
+// "Skift Google-konto": vælg en anden konto i Googles kontovælger. Afbrydes login, bliver den
+// nuværende konto ved med at være forbundet. Er den nye konto en anden, findes kalender-id'et
+// ikke dér (404), og en ny "Studie+ skema"-kalender oprettes (se ensureCalendar).
+async function switchGoogleAccount() {
+  await requestToken(true, true);
 }
 
 // --- Kald til Google Calendar med automatisk genforsøg ---
@@ -181,7 +229,7 @@ async function ensureCalendar(token) {
   }
   const created = await googleRequest(token, "/calendars", {
     method: "POST",
-    body: JSON.stringify({ summary: CALENDAR_NAME, timeZone: TIME_ZONE })
+    body: JSON.stringify({ summary: (await getSettings()).calendarName, timeZone: (await getSettings()).timeZone })
   });
   await storageSet({ calendarId: created.id });
   return created.id;
@@ -219,10 +267,9 @@ async function findStudyPlusTab() {
   return tabs.find(tab => tab.id != null && !tab.discarded) || null;
 }
 
-// Antal uger der skal hentes (valgt i popup'en), begrænset til 1-12, standard 4
+// Antal uger der skal hentes (valgt i Indstillinger), begrænset af maxWeeks i config.js
 async function scheduleWeeks() {
-  const { scheduleWeeks = CONFIG.defaultWeeks } = await storageGet(["scheduleWeeks"]);
-  return Math.max(1, Math.min(CONFIG.maxWeeks, Number(scheduleWeeks) || CONFIG.defaultWeeks));
+  return (await getSettings()).scheduleWeeks;
 }
 
 // Sender en besked til content-scriptet i fanen og venter på svar
@@ -273,18 +320,18 @@ function mondayStart(date = new Date()) {
 // --- Selve synkroniseringen ---
 
 // Udfører planen mod Google: opret, opdater og slet – med pauser mellem hvert kald
-async function applyPlan(token, calendarId, plan) {
+async function applyPlan(token, calendarId, plan, timeZone) {
   const base = `/calendars/${encodeURIComponent(calendarId)}/events`;
   for (const item of plan.create) {
-    const body = eventBody(item.lesson);
+    const body = eventBody(item.lesson, timeZone);
     // Tilføj de skjulte felter, så vi kan genkende eventet næste gang
-    body.extendedProperties = { private: { [MANAGED_KEY]: item.key, [MANAGED_HASH]: contentHash(item.lesson) } };
+    body.extendedProperties = { private: { [MANAGED_KEY]: item.key, [MANAGED_HASH]: contentHash(item.lesson, timeZone) } };
     await googleRequest(token, base, { method: "POST", body: JSON.stringify(body) });
     await sleep(WRITE_DELAY_MS);
   }
   for (const item of plan.update) {
-    const body = eventBody(item.lesson);
-    body.extendedProperties = { private: { [MANAGED_KEY]: item.key, [MANAGED_HASH]: contentHash(item.lesson) } };
+    const body = eventBody(item.lesson, timeZone);
+    body.extendedProperties = { private: { [MANAGED_KEY]: item.key, [MANAGED_HASH]: contentHash(item.lesson, timeZone) } };
     await googleRequest(token, `${base}/${encodeURIComponent(item.id)}`, { method: "PATCH", body: JSON.stringify(body) });
     await sleep(WRITE_DELAY_MS);
   }
@@ -319,8 +366,9 @@ async function syncNow(interactive = false) {
       if (isSuspiciousDrop(existing.length, lessons.length)) {
         throw new StudySyncError("E502", `Studie+: ${lessons.length} lektioner, kalender: ${existing.length}.`);
       }
-      const plan = buildPlan(lessons, existing);
-      await applyPlan(token, calendarId, plan);
+      const { timeZone } = await getSettings();
+      const plan = buildPlan(lessons, existing, timeZone);
+      await applyPlan(token, calendarId, plan, timeZone);
       return plan;
     });
     const status = {
@@ -341,14 +389,39 @@ async function syncNow(interactive = false) {
 
 // --- Hændelser ---
 
-// Ved installation: opret en alarm, der udløses hvert `autoSyncMinutes`. minut (config.js, standard 30)
+// Opretter alarmen for automatisk synkronisering ud fra indstillingerne (config.js + menuen
+// "Indstillinger"), eller fjerner den, hvis automatisk synkronisering er slået fra.
+async function applyAlarm() {
+  const { autoSync, autoSyncMinutes } = await getSettings();
+  await chrome.alarms.clear(ALARM_NAME);
+  if (autoSync) chrome.alarms.create(ALARM_NAME, { periodInMinutes: autoSyncMinutes });
+}
+
+// Omdøber den eksisterende kalender, når navnet ændres i Indstillinger. Fejler det (fx ingen
+// forbindelse), bruges det nye navn bare næste gang en kalender oprettes.
+async function renameCalendar() {
+  try {
+    const { calendarId } = await storageGet(["calendarId"]);
+    if (!calendarId) return;
+    const { calendarName, timeZone } = await getSettings();
+    await withTokenRetry(() => googleToken(false), token =>
+      googleRequest(token, `/calendars/${encodeURIComponent(calendarId)}`, { method: "PATCH", body: JSON.stringify({ summary: calendarName, timeZone }) }));
+  } catch {
+    // ignoreres bevidst
+  }
+}
+
+// Ved installation og opdatering (også når den indlæses igen): opret alarmen ud fra indstillingerne
 chrome.runtime.onInstalled.addListener(() => {
-  chrome.alarms.create(ALARM_NAME, { periodInMinutes: Math.max(1, Number(CONFIG.autoSyncMinutes) || 30) });
+  applyAlarm().catch(() => {});
   restoreActionStatus().catch(() => {});
 });
 
 // Service workers kan genstartes, så genskab ikonets status fra storage.
-chrome.runtime.onStartup.addListener(() => restoreActionStatus().catch(() => {}));
+chrome.runtime.onStartup.addListener(() => {
+  applyAlarm().catch(() => {});
+  restoreActionStatus().catch(() => {});
+});
 restoreActionStatus().catch(() => {});
 // Når alarmen udløses: synkronisér i baggrunden (uden login-vindue, fejl ignoreres)
 chrome.alarms.onAlarm.addListener(alarm => {
@@ -380,6 +453,26 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         await sendStatus(status);
         sendResponse(status);
       });
+    return true;
+  }
+  // Er en Google-konto forbundet, og hvilken e-mail? (til menuen)
+  if (message?.type === "STUDIESYNC_AUTH_STATE") {
+    authState().then(sendResponse);
+    return true;
+  }
+  // Log ud af Google
+  if (message?.type === "STUDIESYNC_LOGOUT") {
+    logoutGoogle().then(() => sendResponse({ ok: true })).catch(error => sendResponse(STUDIESYNC_ERRORS.toStatus(error)));
+    return true;
+  }
+  // Skift til en anden Google-konto
+  if (message?.type === "STUDIESYNC_SWITCH_ACCOUNT") {
+    switchGoogleAccount().then(() => sendResponse({ ok: true })).catch(error => sendResponse(STUDIESYNC_ERRORS.toStatus(error)));
+    return true;
+  }
+  // Indstillinger er ændret i popup'en: opdatér alarmen og kalendernavnet
+  if (message?.type === "STUDIESYNC_SETTINGS_CHANGED") {
+    Promise.all([applyAlarm(), renameCalendar()]).then(() => sendResponse({ ok: true })).catch(() => sendResponse({ ok: false }));
     return true;
   }
 });

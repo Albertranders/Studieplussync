@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildAuthUrl, isTokenFresh, parseAuthRedirect, withTokenRetry } from "../auth.js";
+import { buildAuthUrl, isConnected, isTokenFresh, parseAuthRedirect, withTokenRetry } from "../auth.js";
 
 const REDIRECT = "https://abcdef.chromiumapp.org/";
 
@@ -74,4 +74,25 @@ test("gentagen 401 giver op efter ét genforsøg", async () => {
     /afvist/
   );
   assert.equal(tokens, 2);
+});
+
+test("kontovælgeren vises ved forbind/skift konto, og login_hint udelades dér", () => {
+  const url = new URL(buildAuthUrl({ clientId: "c", redirectUri: REDIRECT, state: "s", loginHint: "elev@gmail.com", selectAccount: true }));
+  assert.equal(url.searchParams.get("prompt"), "select_account");
+  assert.equal(url.searchParams.get("login_hint"), null);
+});
+
+test("stille login (prompt=none) vinder over kontovælgeren", () => {
+  const url = new URL(buildAuthUrl({ clientId: "c", redirectUri: REDIRECT, state: "s", interactive: false, selectAccount: true, loginHint: "a@b.dk" }));
+  assert.equal(url.searchParams.get("prompt"), "none");
+  assert.equal(url.searchParams.get("login_hint"), "a@b.dk");
+});
+
+test("isConnected: flaget vinder, ellers gættes ud fra e-mail eller token", () => {
+  assert.equal(isConnected({ googleConnected: false, loginHint: "a@b.dk" }), false);
+  assert.equal(isConnected({ googleConnected: true }), true);
+  assert.equal(isConnected({ loginHint: "a@b.dk" }), true);
+  assert.equal(isConnected({ webToken: { token: "t" } }), true);
+  assert.equal(isConnected({}), false);
+  assert.equal(isConnected(), false);
 });

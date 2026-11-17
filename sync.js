@@ -4,15 +4,14 @@ import "./config.js";   // opsætning (se config.js)
 // Navne på de skjulte "private extended properties" vi gemmer på hvert Google-event
 export const MANAGED_KEY = "studiesyncKey";   // stabil nøgle, så vi kan genkende en lektion næste gang
 export const MANAGED_HASH = "studiesyncHash"; // fingeraftryk af indholdet, så vi kun opdaterer ved ændringer
-export const TIME_ZONE = globalThis.STUDIESYNC_CONFIG.timeZone;   // sættes i config.js
-
+ 
 // Nøglen der identificerer en lektion: Studie+'s id, eller en sammensat nøgle hvis id mangler
 export function stableKey(lesson) {
   return String(lesson.id || `${lesson.date}|${lesson.start}|${lesson.subject}`);
 }
 
 // Omsætter en lektion til det JSON-objekt, Google Calendar API forventer
-export function eventBody(lesson) {
+export function eventBody(lesson, timeZone = globalThis.STUDIESYNC_CONFIG.timeZone) {
   // Beskrivelsen samles af lærer, lektier og note – tomme dele springes over
   const description = [
     lesson.teacher ? `Lærer: ${lesson.teacher}` : "",
@@ -27,14 +26,14 @@ export function eventBody(lesson) {
     location: lesson.room || "",
     description,
     colorId,
-    start: { dateTime: `${lesson.date}T${lesson.start}:00`, timeZone: TIME_ZONE },
-    end: { dateTime: `${lesson.date}T${lesson.end}:00`, timeZone: TIME_ZONE }
+    start: { dateTime: `${lesson.date}T${lesson.start}:00`, timeZone },
+    end: { dateTime: `${lesson.date}T${lesson.end}:00`, timeZone }
   };
 }
 
 // Samler al indhold, der får et event til at skulle opdateres, i én streng
-function contentJson(lesson) {
-  return JSON.stringify(eventBody(lesson));
+function contentJson(lesson, timeZone) {
+  return JSON.stringify(eventBody(lesson, timeZone));
 }
 
 // 53-bit tekst-hash (cyrb53). Hurtig, uden async, og godt nok til at opdage ændringer.
@@ -53,19 +52,19 @@ function cyrb53(text, seed) {
 // Kort fingeraftryk af indholdet (~28 tegn). Google afkorter stille egenskaber over 1024 tegn,
 // så hash'en må ikke indeholde selve teksten, ellers ser lektioner med lange lektier ud som
 // "ændrede" ved hver synkronisering.
-export function contentHash(lesson) {
-  const json = contentJson(lesson);
+export function contentHash(lesson, timeZone) {
+  const json = contentJson(lesson, timeZone);
   return "v2:" + cyrb53(json, 1).toString(16) + cyrb53(json, 2).toString(16);
 }
 
 // Den gamle hash var hele event-teksten. Genkendes, så eksisterende events ikke opdateres unødigt.
-function matchesStoredHash(stored, lesson) {
-  return stored === contentHash(lesson) || stored === contentJson(lesson);
+function matchesStoredHash(stored, lesson, timeZone) {
+  return stored === contentHash(lesson, timeZone) || stored === contentJson(lesson, timeZone);
 }
 
 // Sammenligner ønsket skema med de events, der allerede ligger i kalenderen,
 // og finder ud af hvad der skal oprettes, opdateres og slettes
-export function buildPlan(lessons, existing) {
+export function buildPlan(lessons, existing, timeZone = globalThis.STUDIESYNC_CONFIG.timeZone) {
   const plan = { create: [], update: [], delete: [], unchanged: 0 };
 
   // Ønskede lektioner efter nøgle; ved dubletter beholdes kun den første
@@ -95,7 +94,7 @@ export function buildPlan(lessons, existing) {
       plan.create.push({ key, lesson }); // findes ikke endnu: opret
       continue;
     }
-    if (!matchesStoredHash(old.extendedProperties?.private?.[MANAGED_HASH], lesson)) {
+    if (!matchesStoredHash(old.extendedProperties?.private?.[MANAGED_HASH], lesson, timeZone)) {
       plan.update.push({ id: old.id, key, lesson }); // indholdet er ændret: opdater
     } else {
       plan.unchanged += 1; // identisk: gør intet

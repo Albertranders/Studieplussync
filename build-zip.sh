@@ -14,7 +14,7 @@ OUT="studiesync-$VERSION.zip"
 rm -f "$OUT"
 
 # Pak kun de filer, udvidelsen skal bruge (ikke tests, README osv.)
-zip -r "$OUT" manifest.json config.js errors.js background.js auth.js content.js gwt.js sync.js \
+zip -r "$OUT" manifest.json config.js errors.js background.js auth.js settings.js content.js gwt.js sync.js \
   popup.html popup.css popup.js icons -x "*.DS_Store"
 
 # Advar hvis Client ID stadig er pladsholderen
