@@ -35,7 +35,7 @@ StudieSync er et uafhængigt projekt og er ikke tilknyttet eller godkendt af Stu
 Udvidelsen synkroniserer brugerens Studie+ skema til en separat Google Kalender.
 
 ## Begrundelse for tilladelser (Permission justifications)
-- **storage**: Gemmer kalenderens id, brugerens valg i Indstillinger (antal uger, automatisk synkronisering, kalendernavn) og status for seneste synkronisering lokalt.
+- **storage**: Gemmer kalenderens id, brugerens valg i Indstillinger (antal uger, automatisk synkronisering, tidszone, udseende, kalendernavn) og status for seneste synkronisering lokalt.
 - **alarms**: Starter automatisk synkronisering (standard hvert 30. minut, kan ændres i Indstillinger eller config.js).
 - **identity**: Google-login (OAuth) til at oprette og opdatere kalenderen "Studie+ skema" via scope `calendar.app.created` (samt `openid email` til at huske, hvilken konto der er logget ind).
 - **Host permission https://all.uddataplus.dk/* og https://all.studieplus.dk/***: Læser skemaet fra brugerens egen åbne og indloggede Studie+-fane.

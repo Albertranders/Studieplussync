@@ -50,7 +50,7 @@ Google kan vise "Google har ikke verificeret denne app". Vælg **Avanceret** og 
 
 De tre prikker i øverste højre hjørne åbner menuen:
 
-- **Indstillinger**: antal uger der indlæses, automatisk synkronisering til/fra og hvor ofte, og kalenderens navn. Ændringer gemmes med det samme og vinder over `config.js`. **Nulstil til config.js** fjerner dine valg igen.
+- **Indstillinger**: antal uger der indlæses, automatisk synkronisering til/fra og hvor ofte, tidszone (vist som fx `(GMT+1) Europe/Copenhagen`), udseende (Automatisk, Lys eller Mørk) og kalenderens navn. **Automatisk** følger browserens lyse eller mørke tema, så popup'en matcher Chrome og Google. Skifter du tidszone, rettes tidspunkterne i kalenderen ved næste synkronisering. Ændringer gemmes med det samme og vinder over `config.js`. **Nulstil til config.js** fjerner dine valg igen.
 - **Test Studie+ forbindelsen**: tjekker, at udvidelsen kan læse skemaet, uden at røre kalenderen.
 - **Skift Google-konto** og **Log ud af Google**: vises, når en konto er forbundet (med den forbundne e-mail øverst). Logud tilbagekalder adgangen hos Google og glemmer login og e-mail i browseren. Kalenderen "Studie+ skema" og dens begivenheder bliver liggende i Google. Forbind en anden konto med **Skift Google-konto**, eller log ud og vælg **Forbind Google Kalender**. Skifter du til en anden konto, oprettes der en ny "Studie+ skema"-kalender dér.
 
@@ -63,7 +63,7 @@ Alle standardindstillinger står i **`config.js`**. Åbn filen i en teksteditor,
 | Indstilling | Standard | Betydning |
 |---|---|---|
 | `calendarName` | `Studie+ skema` | Navnet på kalenderen i Google Kalender |
-| `timeZone` | `Europe/Copenhagen` | Tidszone for lektionerne |
+| `timeZone` | browserens tidszone | Tidszone for lektionerne. Kan ændres i menuen Indstillinger |
 | `developerContact` | `Discord: Albertranders` | Kontaktoplysning, der vises sammen med fejlkoder |
 | `autoSyncMinutes` | `30` | Hvor ofte der synkroniseres automatisk (minutter). Kan ændres i menuen Indstillinger |
 | `defaultWeeks` | `4` | Antal uger der hentes, før du vælger noget i popup'en |
