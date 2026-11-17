@@ -4,8 +4,8 @@ Dette er projektets interne liste over planlagte forbedringer.
 
 ## Stabilitet og sikkerhed
 
-- [ ] Undgå dobbelt synkronisering, hvis automatisk og manuel synkronisering starter samtidig.
-- [ ] Håndtér delvise synkroniseringer, så næste forsøg kan fortsætte sikkert efter en Google-fejl.
+- [x] Undgå dobbelt synkronisering, hvis automatisk og manuel synkronisering starter samtidig.
+- [ ] Vis delvise synkroniseringsfejl og antal ændringer, der nåede kalenderen.
 - [ ] Validér skemadata mere præcist, herunder ugyldige datoer, dubletter og manglende felter.
 - [ ] Undersøg overgang fra implicit OAuth-tokenflow til Authorization Code med PKCE.
 - [ ] Gennemgå, hvordan Google-tokens opbevares i browserens lokale storage.
@@ -27,7 +27,7 @@ Dette er projektets interne liste over planlagte forbedringer.
 
 - [ ] Gør popup'en mere informativ med næste lektion, seneste synkronisering og forbindelsesstatus.
 - [ ] Opdel indstillinger i kategorier som Kalender, Synkronisering, Udseende og Avanceret.
-- [ ] Vis synkroniseringshistorik med antal ændringer og eventuelle fejl.
+- [x] Vis synkroniseringshistorik med antal ændringer og eventuelle fejl.
 - [ ] Tilføj en førstegangsvejledning til Studie+, Google-login og første synkronisering.
 - [ ] Vis udvidelsens versionsnummer.
 - [ ] Gør det muligt at eksportere fejlloggen som en fil.

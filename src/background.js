@@ -6,6 +6,7 @@ import { buildAuthUrl, isConnected, isTokenFresh, parseAuthRedirect, REVOKE_URL,
 import { resolveSettings } from "./settings.js";
 import { appendHistory, createHistoryEntry } from "./history.js";
 import { createSyncLock } from "./sync-lock.js";
+import { addPartialProgressToStatus, createSyncProgress } from "./sync-progress.js";
 
 // Client ID (fra config.js). Skal være en OAuth-klient af typen "Web application", og
 // redirect-URI'en fra `chrome.identity.getRedirectURL()` skal være tilføjet i Google Cloud Console.
@@ -332,23 +333,26 @@ function mondayStart(date = new Date()) {
 // --- Selve synkroniseringen ---
 
 // Udfører planen mod Google: opret, opdater og slet – med pauser mellem hvert kald
-async function applyPlan(token, calendarId, plan, timeZone) {
+async function applyPlan(token, calendarId, plan, timeZone, progress) {
   const base = `/calendars/${encodeURIComponent(calendarId)}/events`;
   for (const item of plan.create) {
     const body = eventBody(item.lesson, timeZone);
     // Tilføj de skjulte felter, så vi kan genkende eventet næste gang
     body.extendedProperties = { private: { [MANAGED_KEY]: item.key, [MANAGED_HASH]: contentHash(item.lesson, timeZone) } };
     await googleRequest(token, base, { method: "POST", body: JSON.stringify(body) });
+    progress.record("created");
     await sleep(WRITE_DELAY_MS);
   }
   for (const item of plan.update) {
     const body = eventBody(item.lesson, timeZone);
     body.extendedProperties = { private: { [MANAGED_KEY]: item.key, [MANAGED_HASH]: contentHash(item.lesson, timeZone) } };
     await googleRequest(token, `${base}/${encodeURIComponent(item.id)}`, { method: "PATCH", body: JSON.stringify(body) });
+    progress.record("updated");
     await sleep(WRITE_DELAY_MS);
   }
   for (const id of plan.delete) {
     await googleRequest(token, `${base}/${encodeURIComponent(id)}`, { method: "DELETE" });
+    progress.record("deleted");
     await sleep(WRITE_DELAY_MS);
   }
 }
@@ -356,6 +360,7 @@ async function applyPlan(token, calendarId, plan, timeZone) {
 // Hele flowet: hent skema -> valider -> sammenlign med kalenderen -> udfør ændringer.
 // `interactive` = må der vises Google-login, hvis token mangler? (false ved automatisk kørsel)
 async function performSyncNow(interactive = false, trigger = "manual") {
+  const progress = createSyncProgress();
   try {
     const tab = await findStudyPlusTab();
     if (!tab) throw new StudySyncError("E301");
@@ -380,7 +385,7 @@ async function performSyncNow(interactive = false, trigger = "manual") {
       }
       const { timeZone } = await getSettings();
       const plan = buildPlan(lessons, existing, timeZone);
-      await applyPlan(token, calendarId, plan, timeZone);
+      await applyPlan(token, calendarId, plan, timeZone, progress);
       return plan;
     });
     const status = {
@@ -393,7 +398,8 @@ async function performSyncNow(interactive = false, trigger = "manual") {
     await sendStatus(status);
     return status;
   } catch (error) {
-    const status = STUDIESYNC_ERRORS.toStatus(error);
+    const status = addPartialProgressToStatus(STUDIESYNC_ERRORS.toStatus(error), progress.snapshot());
+    if (error && typeof error === "object") error.syncStatus = status;
     await recordSyncHistory(status, trigger);
     await sendStatus(status);
     throw error;
@@ -477,7 +483,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   }
   // Synkronisér nu (med mulighed for Google-login)
   if (message?.type === "STUDIESYNC_SYNC") {
-    syncNow(true).then(sendResponse).catch(error => sendResponse(STUDIESYNC_ERRORS.toStatus(error)));
+    syncNow(true).then(sendResponse).catch(error => sendResponse(error?.syncStatus || STUDIESYNC_ERRORS.toStatus(error)));
     return true;
   }
   // Forbind Google Kalender (viser login-vindue hvis nødvendigt)
