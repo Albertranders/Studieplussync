@@ -103,7 +103,6 @@ async function renderHistory() {
 
 $("menu-dashboard").addEventListener("click", () => { openMenu(false); showView("main"); });
 $("menu-settings").addEventListener("click", () => { openMenu(false); showView("settings"); });
-$("menu-guide").addEventListener("click", () => { openMenu(false); openGuide(); });
 $("history-toggle").addEventListener("click", async () => {
   const opening = historyPanel.hidden;
   historyPanel.hidden = !opening;
@@ -150,38 +149,70 @@ syncButton.addEventListener("click", async () => {
   if (!historyPanel.hidden) await renderHistory();
 });
 
-// Introduktionsguide
+// Introduktionsguide med obligatorisk bekræftelse af hvert trin.
 const guideSteps = [
-  { icon:"1", title:"Åbn Studie+", body:"Åbn all.studieplus.dk eller all.uddataplus.dk i din browser. Log ind, og lad fanen være åben. StudieSync læser skemaet fra din aktive Studie+-session.", tip:"Du skal ikke indtaste din Studie+-adgangskode i StudieSync." },
-  { icon:"2", title:"Forbind Google Kalender", body:"Åbn StudieSync fra browserens udvidelsesikon, og tryk på Forbind Google Kalender. Log ind med den Gmail-konto, der er godkendt til at bruge udvidelsen, og giv adgang til den kalender, StudieSync opretter.", tip:"Hvis Google viser en advarsel om, at appen ikke er verificeret, skal du følge projektets adgangsvejledning." },
-  { icon:"3", title:"Kør første synkronisering", body:"Tryk på Synkronisér nu. StudieSync henter dine lektioner og opretter en separat kalender i Google Kalender. Du kan se resultatet og tidspunktet på dashboardet.", tip:"Studie+-fanen skal være åben og logget ind, når der synkroniseres." },
-  { icon:"4", title:"Tilpas indstillingerne", body:"I menuen kan du vælge antal uger, automatisk synkronisering, tidszone, kalendernavn og farvetema. Automatisk synkronisering kører, mens browseren er åben.", tip:"Du kan altid åbne denne guide igen fra menuen. Brug Test Studie+ forbindelsen ved problemer." }
+  { icon:"1", title:"Åbn Studie+", body:"Åbn all.studieplus.dk eller all.uddataplus.dk i din browser. Log ind, og lad fanen være åben. StudieSync læser skemaet fra din aktive Studie+-session.", tip:"Du skal ikke indtaste din Studie+-adgangskode i StudieSync.", check:"Jeg har åbnet Studie+ og er logget ind." },
+  { icon:"2", title:"Forbind Google Kalender", body:"Gå tilbage til dashboardet, og vælg Forbind Google Kalender. Log ind med den Gmail-konto, der er godkendt til at bruge udvidelsen, og giv adgang til kalenderen.", tip:"Hvis Google viser en advarsel om, at appen ikke er verificeret, skal du kun følge udviklerens adgangsvejledning, hvis du forventede at bruge udvidelsen.", check:"Min Google-konto er forbundet til StudieSync." },
+  { icon:"3", title:"Kør første synkronisering", body:"Gå til dashboardet, og tryk på Synkronisér nu. StudieSync henter dine lektioner og opretter eller opdaterer begivenheder i sin egen Google Kalender.", tip:"Studie+-fanen skal være åben og logget ind, når der synkroniseres.", check:"Jeg har gennemført min første synkronisering." },
+  { icon:"4", title:"Tilpas indstillingerne", body:"Vælg antal uger, automatisk synkronisering, tidszone, kalendernavn og farvetema under Indstillinger. Dine valg gemmes automatisk.", tip:"Automatisk synkronisering kræver, at browseren kører, og at en Studie+-fane er åben og logget ind.", check:"Jeg har gennemgået indstillingerne og er klar til at bruge StudieSync." }
 ];
 let guideIndex = 0;
+let guideCompletedSteps = [];
+async function loadGuideProgress() {
+  const stored = await chrome.storage.local.get(["guideCompletedSteps"]);
+  guideCompletedSteps = Array.isArray(stored.guideCompletedSteps)
+    ? guideSteps.map((_, i) => stored.guideCompletedSteps.includes(i))
+    : guideSteps.map(() => false);
+}
 function renderGuide() {
   const step = guideSteps[guideIndex];
   $("guide-step-count").textContent = `${guideIndex+1} / ${guideSteps.length}`;
   $("guide-kicker").textContent = `TRIN ${guideIndex+1} AF ${guideSteps.length}`;
-  $("guide-icon").textContent = step.icon;
+  $("guide-icon").textContent = guideCompletedSteps[guideIndex] ? "✓" : step.icon;
   $("guide-title").textContent = step.title;
   $("guide-body").textContent = step.body;
   $("guide-tip").textContent = step.tip;
-  $("guide-progress-fill").style.width = `${(guideIndex+1)/guideSteps.length*100}%`;
+  $("guide-confirmed").checked = Boolean(guideCompletedSteps[guideIndex]);
+  $("guide-confirm").querySelector("span").textContent = step.check;
+  $("guide-progress-fill").style.width = `${guideCompletedSteps.filter(Boolean).length/guideSteps.length*100}%`;
   $("guide-back").disabled = guideIndex === 0;
-  $("guide-next").textContent = guideIndex === guideSteps.length-1 ? "Afslut" : "Næste";
+  const allDone = guideCompletedSteps.every(Boolean);
+  $("guide-next").disabled = !guideCompletedSteps[guideIndex];
+  $("guide-next").textContent = guideIndex === guideSteps.length-1 ? "Afslut guide" : "Næste trin";
+  $("guide-setting-status").textContent = allDone
+    ? "Alle trin er gennemført."
+    : `${guideCompletedSteps.filter(Boolean).length} af ${guideSteps.length} trin gennemført.`;
 }
-function openGuide() { guideIndex = 0; renderGuide(); showView("guide"); }
+async function openGuide() {
+  await loadGuideProgress();
+  guideIndex = guideCompletedSteps.findIndex(done => !done);
+  if (guideIndex < 0) guideIndex = 0;
+  renderGuide();
+  showView("guide");
+}
 async function finishGuide() {
   await chrome.storage.local.set({ guideCompleted: true });
-  showView("main");
+  $("guide-setting-status").textContent = "Alle trin er gennemført.";
+  showView("settings");
 }
 $("guide-start").addEventListener("click", openGuide);
-$("guide-close").addEventListener("click", () => showView("main"));
-$("guide-skip").addEventListener("click", finishGuide);
-$("guide-back").addEventListener("click", () => { if (guideIndex > 0) guideIndex--; renderGuide(); });
+$("guide-close").addEventListener("click", () => showView("settings"));
+$("guide-confirmed").addEventListener("change", async event => {
+  guideCompletedSteps[guideIndex] = event.target.checked;
+  await chrome.storage.local.set({ guideCompletedSteps });
+  renderGuide();
+});
+$("guide-back").addEventListener("click", () => {
+  if (guideIndex > 0) { guideIndex--; renderGuide(); }
+});
 $("guide-next").addEventListener("click", async () => {
-  if (guideIndex < guideSteps.length-1) { guideIndex++; renderGuide(); }
-  else await finishGuide();
+  if (!guideCompletedSteps[guideIndex]) return;
+  if (guideIndex < guideSteps.length-1) {
+    guideIndex++;
+    renderGuide();
+  } else if (guideCompletedSteps.every(Boolean)) {
+    await finishGuide();
+  }
 });
 
 // Indstillinger
@@ -257,8 +288,10 @@ async function load() {
   const connected = await refreshAuth();
   if (!connected) showNotConnected();
   await refreshDashboard();
-  const { guideCompleted } = await chrome.storage.local.get(["guideCompleted"]);
-  if (!guideCompleted) openGuide();
+  await loadGuideProgress();
+  $("guide-setting-status").textContent = guideCompletedSteps.every(Boolean)
+    ? "Alle trin er gennemført."
+    : `${guideCompletedSteps.filter(Boolean).length} af ${guideSteps.length} trin gennemført.`;
 }
 load().catch(error => {
   setBusy("Dashboard kunne ikke indlæses", error?.message || "Genindlæs udvidelsen, og prøv igen.");
