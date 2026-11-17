@@ -6,6 +6,8 @@ const $ = id => document.getElementById(id);
 const viewMain = $("view-main"), viewSettings = $("view-settings"), viewGuide = $("view-guide");
 let currentGuideAction = null;
 let guideActionSuccess = false;
+let guideFeedback = "";
+let guideFeedbackType = "neutral";
 const state = $("state"), detail = $("detail"), dot = $("dot"), updated = $("last-sync-value");
 const syncButton = $("sync"), connectButton = $("connect");
 const menu = $("menu"), menuButton = $("menu-button"), historyPanel = $("history-panel");
@@ -180,8 +182,8 @@ function renderGuide() {
   $("guide-tip").textContent = step.tip;
   $("guide-action").textContent = step.action;
   $("guide-action").disabled = Boolean(currentGuideAction) || (guideCompletedSteps[guideIndex] && step.task !== "finish");
-  $("guide-status").className = "guide-status " + (guideCompletedSteps[guideIndex] ? "success" : "neutral");
-  $("guide-status").textContent = guideCompletedSteps[guideIndex] ? (step.task === "finish" ? "Introduktionen er gennemført." : "Gennemført. Du kan gå videre.") : (step.task === "finish" ? "Læs påmindelsen, og afslut introduktionen." : "Udfør handlingen for at kontrollere dette trin.");
+  $("guide-status").className = "guide-status " + (guideCompletedSteps[guideIndex] ? "success" : guideFeedbackType);
+  $("guide-status").textContent = guideCompletedSteps[guideIndex] ? (step.task === "finish" ? "Introduktionen er gennemført." : "Gennemført. Du kan gå videre.") : (guideFeedback || (step.task === "finish" ? "Læs påmindelsen, og afslut introduktionen." : "Udfør handlingen for at kontrollere dette trin."));
   $("guide-progress-fill").style.width = `${guideCompletedSteps.filter(Boolean).length/guideSteps.length*100}%`;
   $("guide-back").disabled = guideIndex === 0;
   const allDone = guideCompletedSteps.every(Boolean);
@@ -212,16 +214,21 @@ $("guide-action").addEventListener("click", async () => {
   $("guide-action").disabled = true;
   $("guide-action").textContent = "Arbejder…";
   guideActionSuccess = false;
+  guideFeedback = "Kontrollerer…";
+  guideFeedbackType = "neutral";
   let success = false;
   try {
     if (step.task === "studyplus") {
       const result = await message("STUDIESYNC_TEST_CONNECTION");
       setStatus(result);
       success = Boolean(result?.ok);
+      if (!success) { guideFeedback = "Studie+ kunne ikke findes eller svarede ikke. Åbn Studie+, log ind, eller genindlæs fanen, og prøv igen."; guideFeedbackType = "error"; }
     } else if (step.task === "google") {
       success = await connectGoogle();
+      if (!success) { guideFeedback = "Google Kalender kunne ikke forbindes. Kontrollér login og tilladelser, og prøv igen."; guideFeedbackType = "error"; }
     } else if (step.task === "sync") {
       success = await syncCalendar();
+      if (!success) { guideFeedback = "Synkroniseringen blev ikke gennemført. Kontrollér, at Studie+ er åben, og prøv igen."; guideFeedbackType = "error"; }
     } else if (step.task === "settings") {
       showView("settings");
       success = true;
@@ -229,10 +236,15 @@ $("guide-action").addEventListener("click", async () => {
       success = true;
     }
     if (success) {
+      guideFeedback = "Kontrollen er gennemført. Du kan gå videre.";
+      guideFeedbackType = "success";
       guideCompletedSteps[guideIndex] = true;
       guideActionSuccess = true;
       await chrome.storage.local.set({ guideCompletedSteps });
     }
+  } catch (error) {
+    guideFeedback = error?.message || "Handlingen mislykkedes. Prøv igen.";
+    guideFeedbackType = "error";
   } finally {
     currentGuideAction = null;
     renderGuide();
@@ -242,12 +254,14 @@ $("guide-action").addEventListener("click", async () => {
   renderGuide();
 });
 $("guide-back").addEventListener("click", () => {
-  if (guideIndex > 0) { guideIndex--; renderGuide(); }
+  if (guideIndex > 0) { guideIndex--; guideFeedback = ""; guideFeedbackType = "neutral"; renderGuide(); }
 });
 $("guide-next").addEventListener("click", async () => {
   if (!guideCompletedSteps[guideIndex]) return;
   if (guideIndex < guideSteps.length-1) {
     guideIndex++;
+    guideFeedback = "";
+    guideFeedbackType = "neutral";
     renderGuide();
   } else if (guideCompletedSteps.every(Boolean)) {
     await finishGuide();
