@@ -119,3 +119,16 @@ select:hover, input[type="text"]:hover { border-color: var(--input-hover); }
 .switch:checked::after { transform: translateX(16px); }
 
 button.link { display: block; margin: 6px auto 0; padding: 6px; border: 0; background: none; color: var(--muted); font: inherit; font-size: 12px; text-decoration: underline; cursor: pointer; }
+
+
+/* Synkroniseringshistorik */
+.history-toggle { margin-top: 4px; }
+.history-panel { max-height: 220px; overflow-y: auto; margin-top: 8px; border-top: 1px solid var(--line); }
+.history-item { padding: 10px 2px; border-bottom: 1px solid var(--line); }
+.history-heading { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.history-heading strong { font-size: 12px; }
+.history-heading time, .history-item small { color: var(--muted); font-size: 10.5px; }
+.history-item p { margin: 4px 0; font-size: 11.5px; line-height: 1.35; overflow-wrap: anywhere; }
+.history-good { color: var(--good); }
+.history-bad { color: var(--bad); }
+.history-empty { color: var(--muted); font-size: 11.5px; padding: 8px 2px; }

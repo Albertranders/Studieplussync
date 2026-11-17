@@ -4,6 +4,7 @@ import "./config.js";   // opsætning (se config.js)
 import "./errors.js";   // fejlkoder (se errors.js)
 import { buildAuthUrl, isConnected, isTokenFresh, parseAuthRedirect, REVOKE_URL, USERINFO_URL, withTokenRetry } from "./auth.js";
 import { resolveSettings } from "./settings.js";
+import { appendHistory, createHistoryEntry } from "./history.js";
 
 // Client ID (fra config.js). Skal være en OAuth-klient af typen "Web application", og
 // redirect-URI'en fra `chrome.identity.getRedirectURL()` skal være tilføjet i Google Cloud Console.
@@ -51,6 +52,15 @@ async function restoreActionStatus() {
 async function sendStatus(status) {
   await storageSet({ lastStatus: status, lastUpdated: new Date().toISOString() });
   await updateActionStatus(status);
+}
+
+let historyWriteQueue = Promise.resolve();
+function recordSyncHistory(status, trigger) {
+  historyWriteQueue = historyWriteQueue.then(async () => {
+    const { syncHistory = [] } = await storageGet(["syncHistory"]);
+    await storageSet({ syncHistory: appendHistory(syncHistory, createHistoryEntry(status, trigger)) });
+  }).catch(error => console.warn("Kunne ikke gemme synkroniseringshistorik:", error));
+  return historyWriteQueue;
 }
 // Bygger fuld URL til Google Calendar API
 function calendarUrl(path) {
@@ -343,7 +353,7 @@ async function applyPlan(token, calendarId, plan, timeZone) {
 
 // Hele flowet: hent skema -> valider -> sammenlign med kalenderen -> udfør ændringer.
 // `interactive` = må der vises Google-login, hvis token mangler? (false ved automatisk kørsel)
-async function syncNow(interactive = false) {
+async function syncNow(interactive = false, trigger = "manual") {
   try {
     const tab = await findStudyPlusTab();
     if (!tab) throw new StudySyncError("E301");
@@ -377,11 +387,12 @@ async function syncNow(interactive = false) {
       counts: { lessons: lessons.length, created: plan.create.length, updated: plan.update.length, deleted: plan.delete.length, unchanged: plan.unchanged },
       pageTitle: result.pageTitle
     };
+    await recordSyncHistory(status, trigger);
     await sendStatus(status);
     return status;
   } catch (error) {
-    // Gem fejlen som status (så popup'en kan vise den) og kast den videre
     const status = STUDIESYNC_ERRORS.toStatus(error);
+    await recordSyncHistory(status, trigger);
     await sendStatus(status);
     throw error;
   }
@@ -425,13 +436,18 @@ chrome.runtime.onStartup.addListener(() => {
 restoreActionStatus().catch(() => {});
 // Når alarmen udløses: synkronisér i baggrunden (uden login-vindue, fejl ignoreres)
 chrome.alarms.onAlarm.addListener(alarm => {
-  if (alarm.name === ALARM_NAME) syncNow(false).catch(() => {});
+  if (alarm.name === ALARM_NAME) syncNow(false, "automatic").catch(() => {});
 });
 // Beskeder fra popup'en. `return true` betyder, at svaret sendes asynkront
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   // Hent seneste status til visning i popup'en
   if (message?.type === "STUDIESYNC_STATUS") {
     storageGet(["lastStatus", "lastUpdated", "calendarId"]).then(sendResponse);
+    return true;
+  }
+  // Hent synkroniseringshistorikken.
+  if (message?.type === "STUDIESYNC_HISTORY") {
+    storageGet(["syncHistory"]).then(result => sendResponse(result.syncHistory || []));
     return true;
   }
   // Test forbindelsen til Studie+
