@@ -251,8 +251,6 @@ $("guide-action").addEventListener("click", async () => {
   }
 });
 
-  renderGuide();
-});
 $("guide-back").addEventListener("click", () => {
   if (guideIndex > 0) { guideIndex--; guideFeedback = ""; guideFeedbackType = "neutral"; renderGuide(); }
 });
