@@ -5,7 +5,7 @@ Dette er projektets interne liste over planlagte forbedringer.
 ## Stabilitet og sikkerhed
 
 - [x] Undgå dobbelt synkronisering, hvis automatisk og manuel synkronisering starter samtidig.
-- [ ] Vis delvise synkroniseringsfejl og antal ændringer, der nåede kalenderen.
+- [x] Vis delvise synkroniseringsfejl og antal ændringer, der nåede kalenderen.
 - [ ] Validér skemadata mere præcist, herunder ugyldige datoer, dubletter og manglende felter.
 - [ ] Undersøg overgang fra implicit OAuth-tokenflow til Authorization Code med PKCE.
 - [ ] Gennemgå, hvordan Google-tokens opbevares i browserens lokale storage.
