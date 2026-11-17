@@ -9,6 +9,16 @@ export const INTERVAL_CHOICES = [15, 30, 60, 120];
 // Lægger de gemte valg oven på standardværdierne fra config.js og retter ugyldige værdier.
 // `stored` = rå værdier fra chrome.storage.local, `defaults` = globalThis.STUDIESYNC_CONFIG.
 export function resolveSettings(stored = {}, defaults = {}) {
+  const browserTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const defaultTimeZone = defaults.timeZone || browserTimeZone || "Europe/Copenhagen";
+  const candidateTimeZone = typeof stored.timeZone === "string" && stored.timeZone ? stored.timeZone : defaultTimeZone;
+  let timeZone = defaultTimeZone;
+  try {
+    new Intl.DateTimeFormat("en", { timeZone: candidateTimeZone });
+    timeZone = candidateTimeZone;
+  } catch {
+    // Ugyldig tidszone: brug browserens standard.
+  }
   const maxWeeks = Math.max(1, Number(defaults.maxWeeks) || 12);
   const defaultWeeks = Math.max(1, Math.min(maxWeeks, Number(defaults.defaultWeeks) || 4));
   const defaultMinutes = Math.max(1, Math.round(Number(defaults.autoSyncMinutes) || 30));
@@ -19,6 +29,7 @@ export function resolveSettings(stored = {}, defaults = {}) {
     scheduleWeeks: weeks >= 1 ? Math.min(maxWeeks, weeks) : defaultWeeks,
     autoSync: stored.autoSync !== false,
     autoSyncMinutes: minutes >= 1 ? minutes : defaultMinutes,
+    timeZone,
     calendarName: (name || String(defaults.calendarName || "Studie+ skema")).slice(0, 100)
   };
 }

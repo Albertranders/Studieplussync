@@ -2,15 +2,15 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { autoSyncText, resolveSettings } from "../settings.js";
 
-const defaults = { maxWeeks: 12, defaultWeeks: 4, autoSyncMinutes: 30, calendarName: "Studie+ skema" };
+const defaults = { maxWeeks: 12, defaultWeeks: 4, autoSyncMinutes: 30, calendarName: "Studie+ skema", timeZone: "Europe/Copenhagen" };
 
 test("uden gemte valg bruges config.js", () => {
-  assert.deepEqual(resolveSettings({}, defaults), { scheduleWeeks: 4, autoSync: true, autoSyncMinutes: 30, calendarName: "Studie+ skema" });
+  assert.deepEqual(resolveSettings({}, defaults), { scheduleWeeks: 4, autoSync: true, autoSyncMinutes: 30, timeZone: "Europe/Copenhagen", calendarName: "Studie+ skema" });
 });
 
 test("gemte valg vinder, og uger begrænses af maxWeeks", () => {
   const s = resolveSettings({ scheduleWeeks: 99, autoSync: false, autoSyncMinutes: 60, calendarName: "  Skole  " }, defaults);
-  assert.deepEqual(s, { scheduleWeeks: 12, autoSync: false, autoSyncMinutes: 60, calendarName: "Skole" });
+  assert.deepEqual(s, { scheduleWeeks: 12, autoSync: false, autoSyncMinutes: 60, timeZone: "Europe/Copenhagen", calendarName: "Skole" });
 });
 
 test("ugyldige værdier falder tilbage til config.js", () => {
@@ -18,6 +18,12 @@ test("ugyldige værdier falder tilbage til config.js", () => {
   assert.equal(s.scheduleWeeks, 4);
   assert.equal(s.autoSyncMinutes, 30);
   assert.equal(s.calendarName, "Studie+ skema");
+  assert.equal(s.timeZone, "Europe/Copenhagen");
+});
+
+test("brugerens tidszone gemmes, og ugyldige tidszoner afvises", () => {
+  assert.equal(resolveSettings({ timeZone: "America/New_York" }, defaults).timeZone, "America/New_York");
+  assert.equal(resolveSettings({ timeZone: "Not/A_Timezone" }, defaults).timeZone, "Europe/Copenhagen");
 });
 
 test("teksten om automatisk synkronisering følger indstillingerne", () => {

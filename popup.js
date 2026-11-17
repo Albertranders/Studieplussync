@@ -130,6 +130,16 @@ function fillChoices(settings) {
   fillSelect($("interval"), minutes, minutesLabel);
 }
 
+function fillTimeZones(selected) {
+  const select = $("timeZone");
+  const zones = typeof Intl.supportedValuesOf === "function" ? Intl.supportedValuesOf("timeZone") : [selected];
+  if (!zones.includes("UTC")) zones.push("UTC");
+  if (!zones.includes(selected)) zones.push(selected);
+  zones.sort((a, b) => a.localeCompare(b));
+  fillSelect(select, zones, zone => zone.replaceAll("_", " "));
+  select.value = selected;
+}
+
 function showSettings(settings) {
   fillChoices(settings);
   $("weeks").value = String(settings.scheduleWeeks);
@@ -138,12 +148,13 @@ function showSettings(settings) {
   $("interval").disabled = !settings.autoSync;
   $("interval-row").classList.toggle("disabled", !settings.autoSync);
   $("calendarName").value = settings.calendarName;
+  fillTimeZones(settings.timeZone);
   $("autosync").textContent = autoSyncText(settings);
 }
 
 async function loadSettings() {
   return resolveSettings(
-    await chrome.storage.local.get(["scheduleWeeks", "autoSync", "autoSyncMinutes", "calendarName"]),
+    await chrome.storage.local.get(["scheduleWeeks", "autoSync", "autoSyncMinutes", "calendarName", "timeZone"]),
     CONFIG
   );
 }
@@ -161,18 +172,19 @@ async function saveSettings() {
     scheduleWeeks: $("weeks").value,
     autoSync: $("autoSync").checked,
     autoSyncMinutes: $("interval").value,
-    calendarName: $("calendarName").value
+    calendarName: $("calendarName").value,
+    timeZone: $("timeZone").value
   }, CONFIG);
   await chrome.storage.local.set(settings);
   showSettings(settings);
   flashSaved("Gemt ✓");
   await message("STUDIESYNC_SETTINGS_CHANGED");
 }
-for (const id of ["weeks", "autoSync", "interval", "calendarName"]) $(id).addEventListener("change", saveSettings);
+for (const id of ["weeks", "autoSync", "interval", "calendarName", "timeZone"]) $(id).addEventListener("change", saveSettings);
 
 // Nulstil: fjern brugerens valg, så config.js gælder igen
 $("reset").addEventListener("click", async () => {
-  await chrome.storage.local.remove(["scheduleWeeks", "autoSync", "autoSyncMinutes", "calendarName"]);
+  await chrome.storage.local.remove(["scheduleWeeks", "autoSync", "autoSyncMinutes", "calendarName", "timeZone"]);
   showSettings(await loadSettings());
   flashSaved("Nulstillet ✓");
   await message("STUDIESYNC_SETTINGS_CHANGED");

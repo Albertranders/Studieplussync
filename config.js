@@ -24,7 +24,7 @@ globalThis.STUDIESYNC_CONFIG = {
   calendarName: "Studie+ skema",
 
   // Tidszone for lektionerne (IANA-navn, fx "Europe/Copenhagen").
-  timeZone: "Europe/Copenhagen",
+  timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || "Europe/Copenhagen",
 
   // Hvordan brugerne kan kontakte dig. Vises i popup'en sammen med fejlkoden.
   developerContact: "Discord: Albertranders",

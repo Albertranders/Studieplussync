@@ -1,5 +1,5 @@
 // Service worker: styrer Google-login, kalenderkald og selve synkroniseringen.
-import { buildPlan, contentHash, eventBody, isSafeSchedule, isSuspiciousDrop, MANAGED_HASH, MANAGED_KEY, TIME_ZONE } from "./sync.js";
+import { buildPlan, contentHash, eventBody, isSafeSchedule, isSuspiciousDrop, MANAGED_HASH, MANAGED_KEY } from "./sync.js";
 import "./config.js";   // opsætning (se config.js)
 import "./errors.js";   // fejlkoder (se errors.js)
 import { buildAuthUrl, isConnected, isTokenFresh, parseAuthRedirect, REVOKE_URL, USERINFO_URL, withTokenRetry } from "./auth.js";
@@ -15,7 +15,7 @@ const ALARM_NAME = "studiesync-auto-sync";   // navnet på den tilbagevendende a
 // Indstillinger: standardværdierne fra config.js, med det brugeren har valgt i menuen "Indstillinger" ovenpå
 async function getSettings() {
   return resolveSettings(
-    await storageGet(["scheduleWeeks", "autoSync", "autoSyncMinutes", "calendarName"]),
+    await storageGet(["scheduleWeeks", "autoSync", "autoSyncMinutes", "calendarName", "timeZone"]),
     CONFIG
   );
 }
@@ -229,7 +229,7 @@ async function ensureCalendar(token) {
   }
   const created = await googleRequest(token, "/calendars", {
     method: "POST",
-    body: JSON.stringify({ summary: (await getSettings()).calendarName, timeZone: TIME_ZONE })
+    body: JSON.stringify({ summary: (await getSettings()).calendarName, timeZone: (await getSettings()).timeZone })
   });
   await storageSet({ calendarId: created.id });
   return created.id;
@@ -320,18 +320,18 @@ function mondayStart(date = new Date()) {
 // --- Selve synkroniseringen ---
 
 // Udfører planen mod Google: opret, opdater og slet – med pauser mellem hvert kald
-async function applyPlan(token, calendarId, plan) {
+async function applyPlan(token, calendarId, plan, timeZone) {
   const base = `/calendars/${encodeURIComponent(calendarId)}/events`;
   for (const item of plan.create) {
-    const body = eventBody(item.lesson);
+    const body = eventBody(item.lesson, timeZone);
     // Tilføj de skjulte felter, så vi kan genkende eventet næste gang
-    body.extendedProperties = { private: { [MANAGED_KEY]: item.key, [MANAGED_HASH]: contentHash(item.lesson) } };
+    body.extendedProperties = { private: { [MANAGED_KEY]: item.key, [MANAGED_HASH]: contentHash(item.lesson, timeZone) } };
     await googleRequest(token, base, { method: "POST", body: JSON.stringify(body) });
     await sleep(WRITE_DELAY_MS);
   }
   for (const item of plan.update) {
-    const body = eventBody(item.lesson);
-    body.extendedProperties = { private: { [MANAGED_KEY]: item.key, [MANAGED_HASH]: contentHash(item.lesson) } };
+    const body = eventBody(item.lesson, timeZone);
+    body.extendedProperties = { private: { [MANAGED_KEY]: item.key, [MANAGED_HASH]: contentHash(item.lesson, timeZone) } };
     await googleRequest(token, `${base}/${encodeURIComponent(item.id)}`, { method: "PATCH", body: JSON.stringify(body) });
     await sleep(WRITE_DELAY_MS);
   }
@@ -366,8 +366,9 @@ async function syncNow(interactive = false) {
       if (isSuspiciousDrop(existing.length, lessons.length)) {
         throw new StudySyncError("E502", `Studie+: ${lessons.length} lektioner, kalender: ${existing.length}.`);
       }
-      const plan = buildPlan(lessons, existing);
-      await applyPlan(token, calendarId, plan);
+      const { timeZone } = await getSettings();
+      const plan = buildPlan(lessons, existing, timeZone);
+      await applyPlan(token, calendarId, plan, timeZone);
       return plan;
     });
     const status = {
@@ -402,9 +403,9 @@ async function renameCalendar() {
   try {
     const { calendarId } = await storageGet(["calendarId"]);
     if (!calendarId) return;
-    const { calendarName } = await getSettings();
+    const { calendarName, timeZone } = await getSettings();
     await withTokenRetry(() => googleToken(false), token =>
-      googleRequest(token, `/calendars/${encodeURIComponent(calendarId)}`, { method: "PATCH", body: JSON.stringify({ summary: calendarName }) }));
+      googleRequest(token, `/calendars/${encodeURIComponent(calendarId)}`, { method: "PATCH", body: JSON.stringify({ summary: calendarName, timeZone }) }));
   } catch {
     // ignoreres bevidst
   }

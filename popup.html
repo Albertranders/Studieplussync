@@ -72,6 +72,13 @@
     </div>
 
     <div class="card">
+      <label class="row" for="timeZone">
+        <span><strong>Tidszone</strong><small>Bruges til lektionernes tidspunkter</small></span>
+        <select id="timeZone"></select>
+      </label>
+    </div>
+
+    <div class="card">
       <label class="stack" for="calendarName">
         <strong>Kalenderens navn</strong>
         <small>Navnet i Google Kalender.</small>
@@ -79,8 +86,7 @@
       </label>
     </div>
 
-    <p class="foot">Flere indstillinger, fx Google Client ID, står i <code>config.js</code>.</p>
-    <button id="reset" class="link">Nulstil til config.js</button>
+    <button id="reset" class="link">Nulstil</button>
   </main>
 
   <!-- Scriptet står til sidst, så elementerne ovenfor findes, når det kører -->
