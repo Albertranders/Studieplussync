@@ -5,13 +5,15 @@ import "./errors.js";   // fejlkoder (se errors.js)
 import { buildAuthUrl, isConnected, isTokenFresh, parseAuthRedirect, REVOKE_URL, USERINFO_URL, withTokenRetry } from "./auth.js";
 import { resolveSettings } from "./settings.js";
 import { appendHistory, createHistoryEntry } from "./history.js";
+import { createSyncLock } from "./sync-lock.js";
 
 // Client ID (fra config.js). Skal være en OAuth-klient af typen "Web application", og
 // redirect-URI'en fra `chrome.identity.getRedirectURL()` skal være tilføjet i Google Cloud Console.
 const CONFIG = globalThis.STUDIESYNC_CONFIG;   // alle indstillinger ligger i config.js
 const CLIENT_ID = CONFIG.googleClientId;
 
-const ALARM_NAME = "studiesync-auto-sync";   // navnet på den tilbagevendende alarm
+const ALARM_NAME = "studiesync-auto-sync";
+const syncLock = createSyncLock();   // navnet på den tilbagevendende alarm
 
 // Indstillinger: standardværdierne fra config.js, med det brugeren har valgt i menuen "Indstillinger" ovenpå
 async function getSettings() {
@@ -353,7 +355,7 @@ async function applyPlan(token, calendarId, plan, timeZone) {
 
 // Hele flowet: hent skema -> valider -> sammenlign med kalenderen -> udfør ændringer.
 // `interactive` = må der vises Google-login, hvis token mangler? (false ved automatisk kørsel)
-async function syncNow(interactive = false, trigger = "manual") {
+async function performSyncNow(interactive = false, trigger = "manual") {
   try {
     const tab = await findStudyPlusTab();
     if (!tab) throw new StudySyncError("E301");
@@ -395,6 +397,24 @@ async function syncNow(interactive = false, trigger = "manual") {
     await recordSyncHistory(status, trigger);
     await sendStatus(status);
     throw error;
+  }
+}
+
+// Sørger for, at alarm og manuelle klik aldrig udfører samme synkronisering samtidigt.
+async function syncNow(interactive = false, trigger = "manual") {
+  const release = syncLock.tryAcquire();
+  if (!release) {
+    return {
+      ok: false,
+      busy: true,
+      message: "En synkronisering er allerede i gang.",
+      detail: "Vent, til den igangværende synkronisering er færdig."
+    };
+  }
+  try {
+    return await performSyncNow(interactive, trigger);
+  } finally {
+    release();
   }
 }
 
