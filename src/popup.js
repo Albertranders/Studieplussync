@@ -150,7 +150,8 @@ syncButton.addEventListener("click", async () => {
   setBusy("Synkroniserer…", "Henter skema og opdaterer kalenderen.");
   const result = await message("STUDIESYNC_SYNC");
   syncButton.disabled = false;
-  setStatus(result);
+  if (result?.busy) setBusy(result.message, result.detail);
+  else setStatus(result);
   showUpdated(await message("STUDIESYNC_STATUS"));
 });
 
