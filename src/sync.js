@@ -1,0 +1,121 @@
+// Ren synkroniseringslogik uden netværk eller browser-API'er (kan derfor testes med `node --test`).
+import "./config.js";   // opsætning (se config.js)
+
+// Navne på de skjulte "private extended properties" vi gemmer på hvert Google-event
+export const MANAGED_KEY = "studiesyncKey";   // stabil nøgle, så vi kan genkende en lektion næste gang
+export const MANAGED_HASH = "studiesyncHash"; // fingeraftryk af indholdet, så vi kun opdaterer ved ændringer
+ 
+// Nøglen der identificerer en lektion: Studie+'s id, eller en sammensat nøgle hvis id mangler
+export function stableKey(lesson) {
+  return String(lesson.id || `${lesson.date}|${lesson.start}|${lesson.subject}`);
+}
+
+// Omsætter en lektion til det JSON-objekt, Google Calendar API forventer
+export function eventBody(lesson, timeZone = globalThis.STUDIESYNC_CONFIG.timeZone) {
+  // Beskrivelsen samles af lærer, lektier og note – tomme dele springes over
+  const description = [
+    lesson.teacher ? `Lærer: ${lesson.teacher}` : "",
+    lesson.homework ? `Lektier:\n${lesson.homework}` : "",
+    lesson.note ? `Note:\n${lesson.note}` : ""
+  ].filter(Boolean).join("\n\n");
+
+  // Farve i Google Kalender: 9 = blå (lektier), 10 = grøn (kun note), 5 = gul (intet)
+  const colorId = lesson.homework ? "9" : lesson.note ? "10" : "5";
+  return {
+    summary: lesson.subject || "Lektion", // eventets titel
+    location: lesson.room || "",
+    description,
+    colorId,
+    start: { dateTime: `${lesson.date}T${lesson.start}:00`, timeZone },
+    end: { dateTime: `${lesson.date}T${lesson.end}:00`, timeZone }
+  };
+}
+
+// Samler al indhold, der får et event til at skulle opdateres, i én streng
+function contentJson(lesson, timeZone) {
+  return JSON.stringify(eventBody(lesson, timeZone));
+}
+
+// 53-bit tekst-hash (cyrb53). Hurtig, uden async, og godt nok til at opdage ændringer.
+function cyrb53(text, seed) {
+  let h1 = 0xdeadbeef ^ seed, h2 = 0x41c6ce57 ^ seed;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text.charCodeAt(i);
+    h1 = Math.imul(h1 ^ ch, 2654435761);
+    h2 = Math.imul(h2 ^ ch, 1597334677);
+  }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  return 4294967296 * (2097151 & h2) + (h1 >>> 0);
+}
+
+// Kort fingeraftryk af indholdet (~28 tegn). Google afkorter stille egenskaber over 1024 tegn,
+// så hash'en må ikke indeholde selve teksten, ellers ser lektioner med lange lektier ud som
+// "ændrede" ved hver synkronisering.
+export function contentHash(lesson, timeZone) {
+  const json = contentJson(lesson, timeZone);
+  return "v2:" + cyrb53(json, 1).toString(16) + cyrb53(json, 2).toString(16);
+}
+
+// Den gamle hash var hele event-teksten. Genkendes, så eksisterende events ikke opdateres unødigt.
+function matchesStoredHash(stored, lesson, timeZone) {
+  return stored === contentHash(lesson, timeZone) || stored === contentJson(lesson, timeZone);
+}
+
+// Sammenligner ønsket skema med de events, der allerede ligger i kalenderen,
+// og finder ud af hvad der skal oprettes, opdateres og slettes
+export function buildPlan(lessons, existing, timeZone = globalThis.STUDIESYNC_CONFIG.timeZone) {
+  const plan = { create: [], update: [], delete: [], unchanged: 0 };
+
+  // Ønskede lektioner efter nøgle; ved dubletter beholdes kun den første
+  const wanted = new Map();
+  for (const lesson of lessons) {
+    const key = stableKey(lesson);
+    if (wanted.has(key)) continue;
+    wanted.set(key, lesson);
+  }
+
+  // Eksisterende events som vi selv har oprettet (de har vores skjulte nøgle)
+  const managed = new Map();
+  for (const event of existing) {
+    const props = event.extendedProperties?.private || {};
+    const key = props[MANAGED_KEY];
+    if (!key) continue; // ikke vores event: rør det aldrig
+    if (managed.has(key)) {
+      plan.delete.push(event.id); // dublet i kalenderen: slet den ekstra
+      continue;
+    }
+    managed.set(key, event);
+  }
+
+  for (const [key, lesson] of wanted) {
+    const old = managed.get(key);
+    if (!old) {
+      plan.create.push({ key, lesson }); // findes ikke endnu: opret
+      continue;
+    }
+    if (!matchesStoredHash(old.extendedProperties?.private?.[MANAGED_HASH], lesson, timeZone)) {
+      plan.update.push({ id: old.id, key, lesson }); // indholdet er ændret: opdater
+    } else {
+      plan.unchanged += 1; // identisk: gør intet
+    }
+  }
+
+  // Events vi har oprettet, men som ikke længere er i skemaet, slettes
+  for (const [key, event] of managed) {
+    if (!wanted.has(key)) plan.delete.push(event.id);
+  }
+  return plan;
+}
+
+// Sikkerhedstjek: skemaet skal være en ikke-tom liste, hvor hver lektion har dato, tider og fag
+export function isSafeSchedule(lessons) {
+  return Array.isArray(lessons) && lessons.length > 0 &&
+    lessons.every(l => l.date && l.start && l.end && l.subject);
+}
+
+// Sikkerhedsnet: hvis Studie+ pludselig viser under halvdelen af de eksisterende lektioner
+// (og der er mindst 4), er det sandsynligvis en fejl, og vi stopper i stedet for at slette
+export function isSuspiciousDrop(existingCount, newCount) {
+  return existingCount >= 4 && newCount < Math.ceil(existingCount * 0.5);
+}

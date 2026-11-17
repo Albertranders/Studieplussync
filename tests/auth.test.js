@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildAuthUrl, isConnected, isTokenFresh, parseAuthRedirect, withTokenRetry } from "../auth.js";
+import { buildAuthUrl, isConnected, isTokenFresh, parseAuthRedirect, withTokenRetry } from "../src/auth.js";
 
 const REDIRECT = "https://abcdef.chromiumapp.org/";
 

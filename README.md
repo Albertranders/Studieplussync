@@ -5,9 +5,9 @@ Browserudvidelse, der læser dit skema fra en åben Studie+-session og synkronis
 ## Projektstruktur
 
 - `manifest.json`: browserudvidelsens manifest.
-- `background.js`, `content.js` og `popup.*`: browserfunktionalitet og brugerflade.
-- `auth.js`, `sync.js`, `settings.js`, `config.js` og `errors.js`: login, synkronisering, indstillinger og fejlhåndtering.
-- `gwt.js`: læsning og fortolkning af Studie+'s GWT-kald.
+- `src/background.js`, `src/content.js` og `popup/`: browserfunktionalitet og brugerflade.
+- `src/auth.js`, `src/sync.js`, `src/settings.js`, `src/config.js` og `src/errors.js`: login, synkronisering, indstillinger og fejlhåndtering.
+- `src/gwt.js`: læsning og fortolkning af Studie+'s GWT-kald.
 - `tests/`: automatiserede tests.
 - `icons/`: udvidelsens ikoner.
 - `docs/`: projektdokumentation og interne noter.
@@ -66,15 +66,15 @@ Google kan vise "Google har ikke verificeret denne app". Vælg **Avanceret** og 
 
 De tre prikker i øverste højre hjørne åbner menuen:
 
-- **Indstillinger**: antal uger der indlæses, automatisk synkronisering til/fra og hvor ofte, tidszone (vist som fx `(GMT+1) Europe/Copenhagen`), udseende (Automatisk, Lys eller Mørk) og kalenderens navn. **Automatisk** følger browserens lyse eller mørke tema, så popup'en matcher Chrome og Google. Skifter du tidszone, rettes tidspunkterne i kalenderen ved næste synkronisering. Ændringer gemmes med det samme og vinder over `config.js`. **Nulstil til config.js** fjerner dine valg igen.
+- **Indstillinger**: antal uger der indlæses, automatisk synkronisering til/fra og hvor ofte, tidszone (vist som fx `(GMT+1) Europe/Copenhagen`), udseende (Automatisk, Lys eller Mørk) og kalenderens navn. **Automatisk** følger browserens lyse eller mørke tema, så popup'en matcher Chrome og Google. Skifter du tidszone, rettes tidspunkterne i kalenderen ved næste synkronisering. Ændringer gemmes med det samme og vinder over `src/config.js`. **Nulstil til config.js** fjerner dine valg igen.
 - **Test Studie+ forbindelsen**: tjekker, at udvidelsen kan læse skemaet, uden at røre kalenderen.
 - **Skift Google-konto** og **Log ud af Google**: vises, når en konto er forbundet (med den forbundne e-mail øverst). Logud tilbagekalder adgangen hos Google og glemmer login og e-mail i browseren. Kalenderen "Studie+ skema" og dens begivenheder bliver liggende i Google. Forbind en anden konto med **Skift Google-konto**, eller log ud og vælg **Forbind Google Kalender**. Skifter du til en anden konto, oprettes der en ny "Studie+ skema"-kalender dér.
 
 Er ingen konto forbundet, er **Forbind Google Kalender** den store knap i midten. Når en konto er forbundet, bliver den til **Synkronisér nu**.
 
-## Indstillinger (`config.js`)
+## Indstillinger (`src/config.js`)
 
-Alle standardindstillinger står i **`config.js`**. Åbn filen i en teksteditor, ret, gem, og genindlæs udvidelsen på udvidelsessiden. Der skal ikke køres nogen kommandoer. Du behøver normalt ikke ændre noget.
+Alle standardindstillinger står i **`src/config.js`**. Åbn filen i en teksteditor, ret, gem, og genindlæs udvidelsen på udvidelsessiden. Der skal ikke køres nogen kommandoer. Du behøver normalt ikke ændre noget.
 
 | Indstilling | Standard | Betydning |
 |---|---|---|
@@ -89,11 +89,11 @@ Alle standardindstillinger står i **`config.js`**. Åbn filen i en teksteditor,
 | `writeDelayMs` | `300` | Avanceret: pause mellem skrivninger til Google Kalender |
 | `maxTries` | `6` | Avanceret: antal forsøg pr. Google-kald |
 
-`defaultWeeks`, `autoSyncMinutes` og `calendarName` er startværdier. Det, du vælger i menuen **Indstillinger**, vinder over dem. Ændringer i `config.js` gælder, når du har genindlæst udvidelsen.
+`defaultWeeks`, `autoSyncMinutes` og `calendarName` er startværdier. Det, du vælger i menuen **Indstillinger**, vinder over dem. Ændringer i `src/config.js` gælder, når du har genindlæst udvidelsen.
 
 ## Studie+-adresser
 
-Udvidelsen virker på både `all.uddataplus.dk` og `all.studieplus.dk`. Skifter Studie+ adresse igen, skal den nye tilføjes i `manifest.json` (under `host_permissions` og `content_scripts` → `matches`) og i `findStudyPlusTab()` i `background.js`.
+Udvidelsen virker på både `all.uddataplus.dk` og `all.studieplus.dk`. Skifter Studie+ adresse igen, skal den nye tilføjes i `manifest.json` (under `host_permissions` og `content_scripts` → `matches`) og i `findStudyPlusTab()` i `src/background.js`.
 
 ## Sådan virker det
 

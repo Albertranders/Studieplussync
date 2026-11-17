@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { autoSyncText, formatOffset, resolveSettings, timeZoneLabel, timeZoneOptions } from "../settings.js";
+import { autoSyncText, formatOffset, resolveSettings, timeZoneLabel, timeZoneOptions } from "../src/settings.js";
 
 const defaults = { maxWeeks: 12, defaultWeeks: 4, autoSyncMinutes: 30, calendarName: "Studie+ skema", timeZone: "Europe/Copenhagen" };
 
