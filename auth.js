@@ -8,12 +8,15 @@ export const SCOPE = "https://www.googleapis.com/auth/calendar.app.created";
 // "openid email" bruges kun til at huske, HVILKEN Google-konto du loggede ind med (se loginHint herunder).
 export const SCOPES = ["openid", "email", SCOPE];
 export const USERINFO_URL = "https://www.googleapis.com/oauth2/v3/userinfo";
+// Bruges ved "Log ud af Google": tilbagekalder adgangen hos Google
+export const REVOKE_URL = "https://oauth2.googleapis.com/revoke";
 
 // Bygger URL'en til Googles login-side (implicit flow, token returneres i redirect-URL'ens #-del).
 // `loginHint` = e-mailen fra sidst. Så ved Google hvilken konto der menes, og viser hverken
 // kontovælger eller login igen. Det gør den stille fornyelse (prompt=none) pålidelig,
 // også når flere Google-konti er logget ind i browseren.
-export function buildAuthUrl({ clientId, redirectUri, state, interactive = true, loginHint = "" }) {
+// `selectAccount` = vis altid kontovælgeren (bruges ved "Forbind" og "Skift Google-konto").
+export function buildAuthUrl({ clientId, redirectUri, state, interactive = true, loginHint = "", selectAccount = false }) {
   const params = new URLSearchParams({
     client_id: clientId,
     response_type: "token",
@@ -22,10 +25,20 @@ export function buildAuthUrl({ clientId, redirectUri, state, interactive = true,
     state,
     include_granted_scopes: "true"
   });
-  if (loginHint) params.set("login_hint", loginHint);
+  const choose = interactive && selectAccount;
+  if (loginHint && !choose) params.set("login_hint", loginHint);
   // Ved automatisk kørsel må Google ikke vise noget; så fejler kaldet stille i stedet for.
   if (!interactive) params.set("prompt", "none");
+  else if (choose) params.set("prompt", "select_account");
   return `${AUTH_ENDPOINT}?${params}`;
+}
+
+// Er en Google-konto forbundet? Flaget `googleConnected` sættes ved login og fjernes ved logud.
+// Findes det ikke (installationer fra før menuen kom), regnes kontoen som forbundet, hvis der
+// er en gemt e-mail eller et gemt token.
+export function isConnected({ googleConnected, loginHint, webToken } = {}) {
+  if (typeof googleConnected === "boolean") return googleConnected;
+  return Boolean(loginHint || webToken?.token);
 }
 
 // Læser svaret fra redirect-URL'en. Returnerer { token, expiresAt } eller kaster en forståelig fejl.

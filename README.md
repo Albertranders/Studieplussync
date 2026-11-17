@@ -46,16 +46,26 @@ Er du i tvivl om versionen, kan du slå browserens version op på dens "Om"-side
 
 Google kan vise "Google har ikke verificeret denne app". Vælg **Avanceret** og derefter **Fortsæt**. Det skyldes, at udvidelsen er privat.
 
+## Menuen
+
+De tre prikker i øverste højre hjørne åbner menuen:
+
+- **Indstillinger**: antal uger der indlæses, automatisk synkronisering til/fra og hvor ofte, og kalenderens navn. Ændringer gemmes med det samme og vinder over `config.js`. **Nulstil til config.js** fjerner dine valg igen.
+- **Test Studie+ forbindelsen**: tjekker, at udvidelsen kan læse skemaet, uden at røre kalenderen.
+- **Skift Google-konto** og **Log ud af Google**: vises, når en konto er forbundet (med den forbundne e-mail øverst). Logud tilbagekalder adgangen hos Google og glemmer login og e-mail i browseren. Kalenderen "Studie+ skema" og dens begivenheder bliver liggende i Google. Forbind en anden konto med **Skift Google-konto**, eller log ud og vælg **Forbind Google Kalender**. Skifter du til en anden konto, oprettes der en ny "Studie+ skema"-kalender dér.
+
+Er ingen konto forbundet, er **Forbind Google Kalender** den store knap i midten. Når en konto er forbundet, bliver den til **Synkronisér nu**.
+
 ## Indstillinger (`config.js`)
 
-Alle indstillinger står i **`config.js`**. Åbn filen i en teksteditor, ret, gem, og genindlæs udvidelsen på udvidelsessiden. Der skal ikke køres nogen kommandoer. Du behøver normalt ikke ændre noget.
+Alle standardindstillinger står i **`config.js`**. Åbn filen i en teksteditor, ret, gem, og genindlæs udvidelsen på udvidelsessiden. Der skal ikke køres nogen kommandoer. Du behøver normalt ikke ændre noget.
 
 | Indstilling | Standard | Betydning |
 |---|---|---|
 | `calendarName` | `Studie+ skema` | Navnet på kalenderen i Google Kalender |
 | `timeZone` | `Europe/Copenhagen` | Tidszone for lektionerne |
 | `developerContact` | `Discord: Albertranders` | Kontaktoplysning, der vises sammen med fejlkoder |
-| `autoSyncMinutes` | `30` | Hvor ofte der synkroniseres automatisk (minutter). Teksten i popup'en følger denne værdi |
+| `autoSyncMinutes` | `30` | Hvor ofte der synkroniseres automatisk (minutter). Kan ændres i menuen Indstillinger |
 | `defaultWeeks` | `4` | Antal uger der hentes, før du vælger noget i popup'en |
 | `maxWeeks` | `12` | Øvre grænse for antal uger |
 | `googleClientId` | (udfyldt) | Avanceret: Google Client ID. Ret kun, hvis du bruger dit eget Google-projekt |
@@ -63,7 +73,7 @@ Alle indstillinger står i **`config.js`**. Åbn filen i en teksteditor, ret, ge
 | `writeDelayMs` | `300` | Avanceret: pause mellem skrivninger til Google Kalender |
 | `maxTries` | `6` | Avanceret: antal forsøg pr. Google-kald |
 
-Ændringen af `autoSyncMinutes` gælder først, når udvidelsen er fjernet og indlæst igen.
+`defaultWeeks`, `autoSyncMinutes` og `calendarName` er startværdier. Det, du vælger i menuen **Indstillinger**, vinder over dem. Ændringer i `config.js` gælder, når du har genindlæst udvidelsen.
 
 ## Studie+-adresser
 
@@ -71,11 +81,11 @@ Udvidelsen virker på både `all.uddataplus.dk` og `all.studieplus.dk`. Skifter 
 
 ## Sådan virker det
 
-Udvidelsen bruger dit eksisterende login i Studie+. Den beder ikke om adgangskode eller MitID og sender ikke cookies til en ekstern server. Skemaet hentes fra Studie+'s egne serverkald, mens du er logget ind i en åben fane, og lægges i en separat Google Kalender. Du kan bruge knappen **Test Studie+ forbindelsen** for at tjekke, at udvidelsen kan læse skemaet.
+Udvidelsen bruger dit eksisterende login i Studie+. Den beder ikke om adgangskode eller MitID og sender ikke cookies til en ekstern server. Skemaet hentes fra Studie+'s egne serverkald, mens du er logget ind i en åben fane, og lægges i en separat Google Kalender. Du kan bruge **Test Studie+ forbindelsen** i menuen for at tjekke, at udvidelsen kan læse skemaet.
 
 Studie+ har ikke et officielt API, så hentningen bygger på uofficielle serverkald, som Studie+ kan ændre. Hvis skemaet ikke kan læses sikkert, stopper synkroniseringen uden at ændre kalenderen.
 
-Automatisk synkronisering sker, mens browseren kører (se `autoSyncMinutes`). Studie+-fanen skal være åben og logget ind.
+Automatisk synkronisering sker, mens browseren kører (se `autoSyncMinutes` og menuen Indstillinger). Efter **Log ud af Google** synkroniseres der ikke, før en konto er forbundet igen. Studie+-fanen skal være åben og logget ind.
 
 ## Fejlkoder
 
@@ -144,6 +154,6 @@ Kalenderen bliver aldrig ændret, når en fejl i E3xx, E4xx eller E5xx stopper e
 
 ## Google-adgang og privatliv
 
-Udvidelsen bruger adgangen `calendar.app.created`, så den kun administrerer sin egen "Studie+ skema"-kalender og ikke dine andre kalendere. `openid` og `email` bruges kun til at huske, hvilken konto du loggede ind med, så Google kan forny adgangen stille i baggrunden. Du kan altid tilbagekalde adgangen på https://myaccount.google.com/permissions. Læs mere i `PRIVACY.md`.
+Udvidelsen bruger adgangen `calendar.app.created`, så den kun administrerer sin egen "Studie+ skema"-kalender og ikke dine andre kalendere. `openid` og `email` bruges kun til at huske, hvilken konto du loggede ind med, så Google kan forny adgangen stille i baggrunden. Du kan altid tilbagekalde adgangen med **Log ud af Google** i menuen eller på https://myaccount.google.com/permissions. Læs mere i `PRIVACY.md`.
 
 Privat deling fjerner ikke Googles OAuth-krav. Uverificerede apps kan vise en advarsel eller være underlagt brugerbegrænsninger: https://support.google.com/cloud/answer/13464323

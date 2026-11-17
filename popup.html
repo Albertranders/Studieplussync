@@ -7,28 +7,84 @@
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
-  <main>
-    <header>
+  <!-- Topbjælke: logo og titel til venstre, menu i højre hjørne -->
+  <header class="top">
+    <div class="brand">
       <div class="mark">S</div>
       <div><h1>StudieSync</h1><p>Studie+ → Google Kalender</p></div>
-    </header>
+    </div>
+    <div class="menu-wrap">
+      <button id="menu-button" class="icon-button" aria-label="Menu" aria-haspopup="menu" aria-expanded="false">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+      </button>
+      <!-- Menuen. Kontopunkterne vises kun, når en Google-konto er forbundet (styres af popup.js) -->
+      <div id="menu" class="menu" role="menu" hidden>
+        <button role="menuitem" id="menu-settings">Indstillinger</button>
+        <button role="menuitem" id="menu-test">Test Studie+ forbindelsen</button>
+        <div id="menu-account" hidden>
+          <div class="menu-sep" role="separator"></div>
+          <p class="menu-label" id="menu-email"></p>
+          <button role="menuitem" id="menu-switch">Skift Google-konto</button>
+          <button role="menuitem" id="menu-logout" class="danger">Log ud af Google</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hovedvisning -->
+  <main id="view-main">
     <!-- Statusfelt: farvet prik + besked. aria-live gør, at skærmlæsere oplæser ændringer -->
     <section class="status" aria-live="polite">
       <span id="dot" class="dot"></span>
       <div><strong id="state">Klar til synkronisering</strong><p id="detail">Log ind på Studie+ i en fane.</p></div>
     </section>
-    <!-- Valg af antal uger, der indlæses fra Studie+ -->
-    <label class="setting" for="weeks"><span>Indlæs skema   </span><select id="weeks"><option value="1">1 uge</option><option value="2">2 uger</option><option value="3">3 uger</option><option value="4" selected>4 uger</option><option value="5">5 uger</option><option value="6">6 uger</option><option value="8">8 uger</option><option value="10">10 uger</option><option value="12">12 uger</option></select></label>    <p class="foot setting-help">Perioden tælles fra mandag i den aktuelle uge.</p>    <!-- Knapper (logikken ligger i popup.js) -->
-    <button id="test" class="secondary">Test Studie+ forbindelsen</button>
-    <button id="connect" class="secondary">Forbind Google Kalender</button>
-    <button id="sync" class="primary">Synkronisér nu</button>
-    <p class="foot" id="autosync">Automatisk synkronisering kører hvert 30. minut, mens browseren er åben.</p>
+    <!-- "Forbind" vises, indtil en Google-konto er forbundet. Derefter "Synkronisér nu" -->
+    <button id="connect" class="primary" hidden>Forbind Google Kalender</button>
+    <button id="sync" class="primary" hidden>Synkronisér nu</button>
+    <p class="foot" id="autosync"></p>
     <p class="foot" id="updated"></p>
-    <!-- Kreditering -->
     <p class="foot credit">Udviklet af Albert Randers Jende</p>
   </main>
+
+  <!-- Indstillinger (gemmes automatisk ved ændring) -->
+  <main id="view-settings" hidden>
+    <div class="subhead">
+      <button id="back" class="icon-button" aria-label="Tilbage">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+      </button>
+      <h2>Indstillinger</h2>
+      <span id="saved" class="saved" aria-live="polite"></span>
+    </div>
+
+    <div class="card">
+      <label class="row" for="weeks">
+        <span><strong>Uger der indlæses</strong><small>Tælles fra mandag i denne uge</small></span>
+        <select id="weeks"></select>
+      </label>
+      <label class="row" for="autoSync">
+        <span><strong>Automatisk synkronisering</strong><small>Mens browseren er åben</small></span>
+        <input id="autoSync" type="checkbox" class="switch" role="switch">
+      </label>
+      <label class="row" for="interval" id="interval-row">
+        <span><strong>Hvor ofte</strong></span>
+        <select id="interval"></select>
+      </label>
+    </div>
+
+    <div class="card">
+      <label class="stack" for="calendarName">
+        <strong>Kalenderens navn</strong>
+        <small>Navnet i Google Kalender.</small>
+        <input id="calendarName" type="text" maxlength="100" spellcheck="false" autocomplete="off">
+      </label>
+    </div>
+
+    <p class="foot">Flere indstillinger, fx Google Client ID, står i <code>config.js</code>.</p>
+    <button id="reset" class="link">Nulstil til config.js</button>
+  </main>
+
   <!-- Scriptet står til sidst, så elementerne ovenfor findes, når det kører -->
   <script src="config.js"></script>
-  <script src="popup.js"></script>
+  <script type="module" src="popup.js"></script>
 </body>
 </html>
