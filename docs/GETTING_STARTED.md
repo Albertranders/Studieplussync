@@ -87,4 +87,4 @@ Del aldrig adgangskoder, Google-tokens, cookies eller sessionsdata. Slør e-mail
 
 Du kan skifte Google-konto eller logge ud via menuen. Når du logger ud, tilbagekaldes adgangen hos Google, og loginoplysningerne fjernes fra browseren. Kalenderen og dens begivenheder bliver liggende i Google Kalender.
 
-Du kan åbne introduktionsguiden igen under **Indstillinger** (menuen med de tre prikker), hvis du får brug for at gennemgå opsætningen.
+Du kan åbne introduktionsguiden under **Indstillinger** (menuen med de tre prikker), indtil den er gennemført. Derefter fjernes den fra indstillingerne og kan ikke åbnes igen.

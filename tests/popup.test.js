@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { readFileSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { shouldAutoOpenGuide } from "../src/onboarding.js";
+import { canOpenGuide, shouldAutoOpenGuide } from "../src/onboarding.js";
 
 const root = new URL("../", import.meta.url);
 const srcDir = fileURLToPath(new URL("src/", root));
@@ -48,4 +48,9 @@ test("introduktionsguiden åbnes automatisk kun første gang", () => {
   assert.equal(shouldAutoOpenGuide({ guideAutoOpened: true }), false);
   assert.equal(shouldAutoOpenGuide({ guideCompleted: true }), false);
   assert.equal(shouldAutoOpenGuide({ allStepsCompleted: true }), false);
+});
+
+test("en gennemført introduktionsguide kan ikke åbnes igen", () => {
+  assert.equal(canOpenGuide({}), true);
+  assert.equal(canOpenGuide({ guideCompleted: true }), false);
 });

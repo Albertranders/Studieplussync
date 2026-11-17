@@ -1,6 +1,6 @@
 // Render the popup dashboard, onboarding guide, navigation menu, and settings.
 import { INTERVAL_CHOICES, THEME_CHOICES, WEEK_CHOICES, autoSyncText, resolveSettings, timeZoneOptions } from "./settings.js";
-import { shouldAutoOpenGuide } from "./onboarding.js";
+import { canOpenGuide, shouldAutoOpenGuide } from "./onboarding.js";
 
 const CONFIG = globalThis.STUDIESYNC_CONFIG;
 const $ = id => document.getElementById(id);
@@ -121,7 +121,10 @@ async function renderHistory() {
   }
 }
 
-$("menu-dashboard").addEventListener("click", () => { openMenu(false); showView("main"); });
+$("menu-dashboard").addEventListener("click", async () => {
+  openMenu(false);
+  if (!await resumeGuideFromSettings()) showView("main");
+});
 $("menu-settings").addEventListener("click", () => { openMenu(false); showView("settings"); });
 $("history-toggle").addEventListener("click", async () => {
   const opening = historyPanel.hidden;
@@ -184,6 +187,7 @@ const guideSteps = [
 ];
 let guideIndex = 0;
 let guideCompletedSteps = [];
+let guideIsCompleted = false;
 // Load the persisted completion state for each onboarding step.
 async function loadGuideProgress() {
   const stored = await chrome.storage.local.get(["guideCompletedSteps"]);
@@ -215,6 +219,7 @@ function renderGuide() {
 }
 // Open the guide at its first incomplete step, or restart at the beginning when complete.
 async function openGuide() {
+  if (!canOpenGuide({ guideCompleted: guideIsCompleted })) return;
   guidePausedForSettings = false;
   $("guide-resume").hidden = true;
   await loadGuideProgress();
@@ -223,15 +228,8 @@ async function openGuide() {
   renderGuide();
   showView("guide");
 }
-// Persist guide completion and return to the settings screen.
-async function finishGuide() {
-  await chrome.storage.local.set({ guideCompleted: true });
-  $("guide-setting-status").textContent = "Alle trin er gennemført.";
-  showView("settings");
-}
-$("guide-start").addEventListener("click", openGuide);
-$("guide-resume").addEventListener("click", async () => {
-  if (!guidePausedForSettings) return;
+async function resumeGuideFromSettings() {
+  if (!guidePausedForSettings) return false;
   guidePausedForSettings = false;
   $("guide-resume").hidden = true;
   guideCompletedSteps[guideIndex] = true;
@@ -240,7 +238,18 @@ $("guide-resume").addEventListener("click", async () => {
   await chrome.storage.local.set({ guideCompletedSteps });
   renderGuide();
   showView("guide");
-});
+  return true;
+}
+// Persist guide completion and return to the settings screen.
+async function finishGuide() {
+  await chrome.storage.local.set({ guideCompleted: true });
+  guideIsCompleted = true;
+  $("guide-entry").hidden = true;
+  $("guide-setting-status").textContent = "Alle trin er gennemført.";
+  showView("settings");
+}
+$("guide-start").addEventListener("click", openGuide);
+$("guide-resume").addEventListener("click", resumeGuideFromSettings);
 $("guide-close").addEventListener("click", () => {
   guidePausedForSettings = false;
   $("guide-resume").hidden = true;
@@ -387,7 +396,9 @@ $("reset").addEventListener("click", async () => {
   showSettings(await loadSettings()); flashSaved("Nulstillet ✓");
   await message("STUDIESYNC_SETTINGS_CHANGED");
 });
-$("back").addEventListener("click", () => showView("main"));
+$("back").addEventListener("click", async () => {
+  if (!await resumeGuideFromSettings()) showView("main");
+});
 
 // Initialize settings, version, account state, dashboard, and onboarding state.
 async function load() {
@@ -398,10 +409,12 @@ async function load() {
   if (!connected) showNotConnected();
   await refreshDashboard(connected);
   await loadGuideProgress();
+  const { guideCompleted, guideAutoOpened } = await chrome.storage.local.get(["guideCompleted", "guideAutoOpened"]);
+  guideIsCompleted = Boolean(guideCompleted);
+  $("guide-entry").hidden = !canOpenGuide({ guideCompleted: guideIsCompleted });
   $("guide-setting-status").textContent = guideCompletedSteps.every(Boolean)
     ? "Alle trin er gennemført."
     : `${guideCompletedSteps.filter(Boolean).length} af ${guideSteps.length} trin gennemført.`;
-  const { guideCompleted, guideAutoOpened } = await chrome.storage.local.get(["guideCompleted", "guideAutoOpened"]);
   const allStepsCompleted = guideCompletedSteps.every(Boolean);
   if (shouldAutoOpenGuide({ guideCompleted, guideAutoOpened, allStepsCompleted })) {
     await chrome.storage.local.set({ guideAutoOpened: true });
