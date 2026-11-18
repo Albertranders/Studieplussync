@@ -6,7 +6,7 @@ Vigtige ændringer i StudieSync. Nyeste version står øverst.
 
 ### Tilføjet
 - Dashboard i popup'en med forbindelsesstatus, seneste synkronisering og versionsnummer.
-- Forsiden har to kolonner: en ny kolonne til højre viser hele dagens skema (aktuel lektion fremhævet, overståede lektioner nedtonede).
+- Forsiden har to kolonner: til højre ligger overskriften og hele dagens skema (aktuel lektion fremhævet, overståede nedtonede, plads til 7 lektioner uden scroll). Til venstre ligger status, forbindelse, seneste synkronisering og knapper.
 - Introduktionsguide med kontrol af hvert trin, og indstillinger opdelt i Synkronisering, Kalender og Udseende.
 - Dokumentet `docs/GETTING_STARTED.md`.
 - Test, der kontrollerer, at alle JS-filer kan parses, og at popup'ens element-id'er findes i `popup/index.html`.
