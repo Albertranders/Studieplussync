@@ -16,6 +16,14 @@ Vigtige ændringer i StudieSync. Nyeste version står øverst.
 - Dashboardet overskriver ikke længere beskeden "Google Kalender er ikke forbundet" og kalder ikke Google, når ingen konto er forbundet.
 - Guidens "pause til indstillinger"-tilstand nulstilles, når guiden lukkes eller åbnes igen.
 - Ødelagt dokumentationsliste i README.
+- Fejlbeskeder fra Studie+ mistede bogstaverne r, n og t på grund af forkert escapede regex i `gwt.js`.
+- Lektioner, der aflyses i slutningen af den hentede periode, fjernes nu fra kalenderen.
+- Beskeder til Studie+-fanen har nu en timeout på 2 minutter, så synkronisering ikke kan hænge.
+- Studie+-versionen slås op igen (ét ekstra forsøg), hvis Studie+ opdateres, mens fanen er åben.
+
+### Fjernet
+- Ubrugt SVG-læser i `content.js`, fejlkoden `E407`, funktionen `mondayStart()` og ubrugte CSS-klasser.
+- `check-extension.mjs` tjekker nu alle filer i `src/` i stedet for en fast liste.
 
 ## 0.2.0
 

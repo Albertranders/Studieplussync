@@ -39,7 +39,6 @@
     E404: { text: "Skemaet indeholdt en ugyldig lektion.", fix: "Kontakt udvikleren." },
     E405: { text: "Studie+ svarede med en serverfejl.", fix: "Log ind på Studie+ igen, og prøv igen. Kommer fejlen igen, så kontakt udvikleren." },
     E406: { text: "Studie+ returnerede ingen lektioner for perioden.", fix: "Tjek, at du har lektioner i perioden, eller vælg flere uger i udvidelsen." },
-    E407: { text: "Kunne ikke finde datooverskrifterne i skemaet.", fix: "Kontakt udvikleren." },
 
     // --- E5xx: Beskyttelse af kalenderen (kalenderen er ikke ændret) ---
     E501: { text: "Skemaet kunne ikke valideres. Kalenderen er ikke ændret.", fix: "Prøv igen. Kommer fejlen igen, så kontakt udvikleren." },

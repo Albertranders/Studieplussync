@@ -154,7 +154,6 @@ Når noget går galt, viser udvidelsen en fejlkode, fx **Fejl E301**, og beder d
 | E404 | Skemaet indeholdt en ugyldig lektion. | Kontakt udvikleren. |
 | E405 | Studie+ svarede med en serverfejl. | Log ind på Studie+ igen, og prøv igen. Kommer fejlen igen, så kontakt udvikleren. |
 | E406 | Studie+ returnerede ingen lektioner for perioden. | Tjek, at du har lektioner i perioden, eller vælg flere uger i udvidelsen. |
-| E407 | Kunne ikke finde datooverskrifterne i skemaet. | Kontakt udvikleren. |
 
 **Beskyttelse af kalenderen**
 
