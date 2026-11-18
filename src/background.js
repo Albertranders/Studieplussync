@@ -239,9 +239,10 @@ async function ensureCalendar(token) {
       await storageSet({ calendarId: null }); // findes ikke mere: opret en ny nedenfor
     }
   }
+  const { calendarName, timeZone } = await getSettings();
   const created = await googleRequest(token, "/calendars", {
     method: "POST",
-    body: JSON.stringify({ summary: (await getSettings()).calendarName, timeZone: (await getSettings()).timeZone })
+    body: JSON.stringify({ summary: calendarName, timeZone })
   });
   await storageSet({ calendarId: created.id });
   return created.id;
@@ -308,9 +309,12 @@ async function scheduleWeeks() {
 }
 
 // Sender en besked til content-scriptet i fanen og venter på svar
+const TAB_TIMEOUT_MS = 120000; // giv op efter 2 minutter, så en synkronisering aldrig hænger for evigt
 function sendTabMessage(tab, type, weeks) {
   return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new StudySyncError("E302", "Studie+-siden svarede ikke i tide.")), TAB_TIMEOUT_MS);
     chrome.tabs.sendMessage(tab.id, { type, weeks }, response => {
+      clearTimeout(timer);
       const error = chrome.runtime.lastError;
       if (error) reject(new StudySyncError("E302", error.message));
       else if (!response?.ok) reject(response?.error ? new Error(response.error) : new StudySyncError("E302", "Tomt svar fra Studie+-siden."));
@@ -342,14 +346,6 @@ async function testConnection() {
     await sendStatus(status);
     return status;
   }
-}
-
-// Mandag kl. 00:00 i ugen for den givne dato (bruges ikke i øjeblikket)
-function mondayStart(date = new Date()) {
-  const d = new Date(date);
-  d.setHours(0, 0, 0, 0);
-  d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
-  return d;
 }
 
 // --- Selve synkroniseringen ---
@@ -396,9 +392,9 @@ async function performSyncNow(interactive = false, trigger = "manual") {
     const plan = await withTokenRetry(() => googleToken(interactive), async token => {
       const calendarId = await ensureCalendar(token);
       // Find tidsrummet skemaet dækker (første til sidste dato, inkl. sidste dag)
-      const dates = lessons.map(lesson => lesson.date).sort();
-      const start = new Date(`${dates[0]}T00:00:00`);
-      const end = new Date(`${dates[dates.length - 1]}T00:00:00`);
+      // Brug den hentede periode, så lektioner der er aflyst i periodens ende også ryddes.
+      const start = new Date(`${result.dateRange.start}T00:00:00`);
+      const end = new Date(`${result.dateRange.end}T00:00:00`);
       end.setDate(end.getDate() + 1);
       const existing = await getManagedEvents(token, calendarId, start, end);
       // Beskyt mod en delvis hentning, der ellers ville slette mange events
@@ -490,7 +486,7 @@ chrome.alarms.onAlarm.addListener(alarm => {
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   // Hent seneste status til visning i popup'en
   if (message?.type === "STUDIESYNC_STATUS") {
-    storageGet(["lastStatus", "lastUpdated", "calendarId"]).then(sendResponse);
+    storageGet(["lastStatus", "lastUpdated"]).then(sendResponse);
     return true;
   }
   // Hent næste lektion til dashboardet

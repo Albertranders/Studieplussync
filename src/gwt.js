@@ -249,7 +249,7 @@
   }
 
   // Henter skemaet for en periode ("ÅÅÅÅ-MM-DD" til "ÅÅÅÅ-MM-DD") og returnerer lektionerne
-  async function fetchSchedule(startDate, endDate) {
+  async function fetchScheduleOnce(startDate, endDate) {
     const config = await discover();
     // Selve RPC-kaldet: serverens adresse, servicens hash, metoden "hentEgnePersSkemaData"
     // og start- og slutdato, alt adskilt af |
@@ -292,11 +292,11 @@
         };
         collect(payload);
         const useful = strings
-          .filter(value => value.length > 2 && !/^\\d+$/.test(value))
+          .filter(value => value.length > 2 && !/^\d+$/.test(value))
           .map(value => value.replace(/[\r\n\t]+/g, " "));
         if (useful.length) detail = useful.join(" | ").slice(0, 12000);
       } catch {
-        detail = body.slice(4, 184).replace(/[\\r\\n\\t]+/g, " ");
+        detail = body.slice(4, 184).replace(/[\r\n\t]+/g, " ");
       }
       throw new StudySyncError("E405", "Studie+ GWT-fejl: " + detail);
     }
@@ -314,6 +314,19 @@
     const lessons = parseScheduleData(decoded);
     if (!lessons.length) throw new StudySyncError("E406", "Studie+ returnerede ingen lektioner for perioden.");
     return { ok: true, lessons, responsePrefix: "//OK", stringCount: decoded.at(-3).length, dataCount: decoded.length - 3 };
+  }
+
+  // Hvis Studie+ er opdateret, mens fanen har været åben, er den cachede version forældet.
+  // Ved fejl, der tyder på det, nulstilles cachen, og kaldet prøves præcis én gang til.
+  const STALE_CODES = new Set(["E305", "E307", "E401", "E405"]);
+  async function fetchSchedule(startDate, endDate) {
+    try {
+      return await fetchScheduleOnce(startDate, endDate);
+    } catch (error) {
+      if (!STALE_CODES.has(error?.code)) throw error;
+      discoveryPromise = null;
+      return await fetchScheduleOnce(startDate, endDate);
+    }
   }
 
   // Gør funktionen tilgængelig for content.js
