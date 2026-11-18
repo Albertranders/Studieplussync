@@ -35,6 +35,7 @@ function showView(name) {
   viewMain.hidden = name !== "main";
   viewSettings.hidden = name !== "settings";
   viewGuide.hidden = name !== "guide";
+  document.body.classList.toggle("wide", name === "main"); // to kolonner på forsiden
 }
 // Synchronize the menu's visibility and accessibility state.
 function openMenu(open) {
@@ -66,12 +67,40 @@ function formatDateTime(value) {
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? "" : date.toLocaleString("da-DK", { weekday:"long", day:"numeric", month:"long", hour:"2-digit", minute:"2-digit" });
 }
-// Display the next scheduled lesson, or the empty-state copy when none is available.
-function renderNextLesson(lesson) {
-  $("next-subject").textContent = lesson?.summary || "Ingen kommende lektion";
-  $("next-time").textContent = lesson ? formatDateTime(lesson.start) : "Synkronisér for at hente dit skema.";
-  $("next-meta").textContent = lesson?.location ? `Lokale: ${lesson.location}` : "";
-  $("next-badge").textContent = lesson ? "I kalenderen" : "Afventer";
+// Format a lesson time as HH:MM in the Danish locale.
+const formatClock = value => new Date(value).toLocaleTimeString("da-DK", { hour: "2-digit", minute: "2-digit" });
+
+// Show today's complete schedule. `lessons` is null when it could not be loaded.
+function renderToday(lessons, connected) {
+  const list = $("today-list"), empty = $("today-empty");
+  $("today-title").textContent = new Date().toLocaleDateString("da-DK", { weekday: "long", day: "numeric", month: "long" });
+  list.replaceChildren();
+  const emptyText = !connected ? "Forbind Google Kalender for at se dagens skema."
+    : lessons === null ? "Dagens skema kunne ikke hentes. Prøv igen om lidt."
+    : !lessons?.length ? "Ingen lektioner i dag. Synkronisér, hvis det ikke passer."
+    : "";
+  empty.textContent = emptyText;
+  empty.hidden = !emptyText;
+  const now = Date.now();
+  for (const lesson of emptyText ? [] : lessons) {
+    const start = new Date(lesson.start).getTime();
+    const end = lesson.end ? new Date(lesson.end).getTime() : start;
+    const row = document.createElement("li");
+    row.className = "today-item" + (end <= now ? " past" : start <= now ? " now" : "");
+    const time = document.createElement("time");
+    time.className = "today-time";
+    time.dateTime = lesson.start;
+    time.textContent = lesson.end ? `${formatClock(lesson.start)}–${formatClock(lesson.end)}` : formatClock(lesson.start);
+    const subject = document.createElement("strong");
+    subject.textContent = lesson.summary;
+    row.append(time, subject);
+    if (lesson.location) {
+      const room = document.createElement("small");
+      room.textContent = `Lokale: ${lesson.location}`;
+      row.append(room);
+    }
+    list.append(row);
+  }
 }
 // Refresh sync metadata and fetch the next lesson only when Google is connected.
 async function refreshDashboard(connected = true) {
@@ -88,7 +117,7 @@ async function refreshDashboard(connected = true) {
   }
   // Avoid a Google API request when no account is connected.
   const data = connected ? await message("STUDIESYNC_DASHBOARD") : null;
-  renderNextLesson(data?.nextLesson);
+  renderToday(connected ? (data ? data.todayLessons ?? null : null) : [], connected);
 }
 // Render stored sync history using DOM nodes and textContent rather than HTML strings.
 async function renderHistory() {
