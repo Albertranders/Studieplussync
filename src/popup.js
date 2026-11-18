@@ -91,14 +91,20 @@ function renderToday(lessons, connected) {
     time.className = "today-time";
     time.dateTime = lesson.start;
     time.textContent = lesson.end ? `${formatClock(lesson.start)}–${formatClock(lesson.end)}` : formatClock(lesson.start);
-    const subject = document.createElement("strong");
-    subject.textContent = lesson.summary;
-    row.append(time, subject);
+    const top = document.createElement("div");
+    top.className = "today-top";
+    top.append(time);
     if (lesson.location) {
-      const room = document.createElement("small");
-      room.textContent = `Lokale: ${lesson.location}`;
-      row.append(room);
+      const room = document.createElement("span");
+      room.className = "today-room";
+      room.textContent = `Lokale ${lesson.location}`;
+      top.append(room);
     }
+    const subject = document.createElement("strong");
+    subject.className = "today-subject";
+    subject.textContent = lesson.summary;
+    subject.title = lesson.summary; // fuldt navn ved hover, hvis det er afkortet
+    row.append(top, subject);
     list.append(row);
   }
 }

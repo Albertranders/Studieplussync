@@ -25,10 +25,9 @@
 
 <!-- Main dashboard: status, sync controls and history (left), today's schedule (right). -->
 <main id="view-main">
-  <section class="status" aria-live="polite"><span id="dot" class="dot"></span><div><strong id="state">Klar til synkronisering</strong><p id="detail">Log ind på Studie+ i en fane.</p></div></section>
   <div class="main-grid">
   <div class="col-left">
-  <div class="dashboard-heading"><div><p class="eyebrow">OVERSIGT</p><h2>Dit skema</h2></div><span id="version" class="version"></span></div>
+  <section class="status" aria-live="polite"><span id="dot" class="dot"></span><div><strong id="state">Klar til synkronisering</strong><p id="detail">Log ind på Studie+ i en fane.</p></div></section>
   <section class="metrics" aria-label="Synkroniseringsstatus">
     <article class="metric"><span class="metric-label">FORBINDELSE</span><strong id="connection-value">Kontrollerer…</strong><small id="connection-detail">Google Kalender</small></article>
     <article class="metric"><span class="metric-label">SIDST SYNKRONISERET</span><strong id="last-sync-value">Aldrig</strong><small id="last-sync-detail">Ingen synkronisering endnu</small></article>
@@ -40,12 +39,15 @@
   <section id="history-panel" class="history-panel" hidden aria-label="Synkroniseringshistorik"><div id="history-list"></div></section>
   <p class="foot credit">Udviklet af Albert Randers Jende</p>
   </div>
+  <div class="col-right">
+  <div class="dashboard-heading"><div><p class="eyebrow">OVERSIGT</p><h2>Dit skema</h2></div><span id="version" class="version"></span></div>
   <aside class="col-today" aria-label="Dagens skema">
     <p class="eyebrow">I DAG</p>
     <h2 id="today-title" class="today-title"></h2>
     <ol id="today-list" class="today-list"></ol>
     <p id="today-empty" class="today-empty" hidden></p>
   </aside>
+  </div>
   </div>
 </main>
 

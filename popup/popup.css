@@ -230,16 +230,24 @@ body { min-height: 540px; }
 .guide-status.neutral { color: var(--muted); }
 .guide-icon { white-space: pre-wrap; }
 
-/* Forsiden har to kolonner: oversigt til venstre og dagens skema til højre. */
-html:has(body.wide), body.wide { width: 760px; }
-.main-grid { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 16px; align-items: start; }
-.col-today { padding: 16px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; }
-.today-title { margin: 3px 0 12px; font-size: 17px; text-transform: capitalize; }
-.today-list { list-style: none; margin: 0; padding: 0; max-height: 400px; overflow-y: auto; }
-.today-item { display: grid; gap: 2px; padding: 9px 10px; margin-bottom: 6px; border: 1px solid var(--line); border-left: 3px solid var(--line); border-radius: 9px; background: var(--bg); }
-.today-item strong { font-size: 12.5px; line-height: 1.35; overflow-wrap: anywhere; }
-.today-time { color: var(--muted); font-size: 11px; font-weight: 650; }
-.today-item small { color: var(--foot); font-size: 10.5px; }
+/* Forsiden har to kolonner: status og knapper til venstre, overskrift og dagens skema til højre. */
+html:has(body.wide), body.wide { width: 552px; }
+body.wide { max-height: 600px; overflow-y: auto; }
+.main-grid { display: grid; grid-template-columns: 200px 300px; gap: 16px; align-items: start; }
+.col-left .status { margin: 5px 0 9px; }
+.col-left .status p { font-size: 11.5px; }
+.col-left .metrics { grid-template-columns: 1fr; }
+.col-right .dashboard-heading { margin: 5px 1px 10px; }
+.col-today { padding: 14px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; }
+.today-title { margin: 3px 0 10px; font-size: 16px; }
+.today-title::first-letter { text-transform: uppercase; }
+/* Hver lektion er 47 px + 5 px afstand, så 7 lektioner (364 px) vises uden scroll; scroll først ved mere end 8. */
+.today-list { list-style: none; margin: 0; padding: 0; max-height: 420px; overflow-y: auto; }
+.today-item { padding: 7px 10px; margin-bottom: 5px; border: 1px solid var(--line); border-left: 3px solid var(--line); border-radius: 9px; background: var(--bg); }
+.today-top { display: flex; justify-content: space-between; gap: 8px; line-height: 14px; }
+.today-time { color: var(--muted); font-size: 11px; font-weight: 650; white-space: nowrap; }
+.today-room { color: var(--foot); font-size: 10.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.today-subject { display: block; font-size: 12.5px; line-height: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .today-item.now { border-left-color: var(--accent-text); background: color-mix(in srgb, var(--accent) 10%, var(--card)); }
 .today-item.past { opacity: .5; }
 .today-empty { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
