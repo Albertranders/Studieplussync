@@ -73,5 +73,5 @@ export function autoSyncText(settings) {
   if (!settings.autoSync) return "Automatisk synkronisering er slået fra.";
   const m = settings.autoSyncMinutes;
   const every = m === 1 ? "hvert minut" : m === 60 ? "hver time" : `hvert ${m}. minut`;
-  return `Automatisk synkronisering kører ${every}, mens browseren er åben.`;
+  return `Automatisk ${every}.`;
 }

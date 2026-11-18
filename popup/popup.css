@@ -234,9 +234,17 @@ body { min-height: 540px; }
 html:has(body.wide), body.wide { width: 552px; }
 body.wide { max-height: 600px; overflow-y: auto; }
 .main-grid { display: grid; grid-template-columns: 200px 300px; gap: 16px; align-items: start; }
-.col-left .status { margin: 5px 0 9px; }
-.col-left .status p { font-size: 11.5px; }
-.col-left .metrics { grid-template-columns: 1fr; }
+.col-left { display: flex; flex-direction: column; gap: 12px; padding-top: 5px; }
+.col-left > * { margin: 0 !important; }
+.col-left .status { gap: 11px; padding: 15px 16px; }
+.col-left .status strong { font-size: 13px; line-height: 1.4; }
+.col-left .status p { margin-top: 4px; font-size: 11.5px; line-height: 1.5; }
+.col-left .metrics { grid-template-columns: 1fr; gap: 12px; }
+.col-left .metric { padding: 15px 16px; }
+.col-left .metric strong { font-size: 12.5px; line-height: 1.4; }
+.col-left .metric small { margin-top: 5px; font-size: 10.5px; line-height: 1.4; }
+.col-left #autosync { padding: 0 4px; text-align: center; line-height: 1.5; }
+.col-left .dashboard-actions { padding-top: 12px; }
 .col-right .dashboard-heading { margin: 5px 1px 10px; }
 .col-today { padding: 14px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; }
 .today-title { margin: 3px 0 10px; font-size: 16px; }

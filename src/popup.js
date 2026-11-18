@@ -22,8 +22,17 @@ function message(type) {
 // Apply a background status message to the dashboard's visible status elements.
 function setStatus(status) {
   if (!status) return;
-  state.textContent = status.message || "Klar til synkronisering";
-  detail.textContent = status.detail || (status.ok ? "Forbindelsen fungerer." : "Kontrollér Studie+ og prøv igen.");
+  const c = status.ok && !status.detail ? status.counts : null;
+  if (c && c.lessons !== undefined) {
+    // Vellykket synkronisering: kort titel og kun de ændringer, der faktisk skete.
+    const parts = [[c.created, "nye"], [c.updated, "ændrede"], [c.deleted, "slettede"]]
+      .filter(([n]) => n > 0).map(([n, label]) => `${n} ${label}`);
+    state.textContent = "Synkroniseret";
+    detail.textContent = parts.length ? parts.join(", ") : "Ingen ændringer";
+  } else {
+    state.textContent = status.message || "Klar til synkronisering";
+    detail.textContent = status.detail || (status.ok ? "Forbindelsen fungerer." : "Kontrollér Studie+ og prøv igen.");
+  }
   dot.className = "dot " + (status.ok ? "good" : "bad");
 }
 // Replace the current status with a temporary in-progress message.
@@ -55,7 +64,7 @@ async function refreshAuth() {
   $("menu-account").hidden = !connected;
   $("menu-email").textContent = auth?.email ? `Forbundet som ${auth.email}` : "Google-konto forbundet";
   $("connection-value").textContent = connected ? "Google forbundet" : "Ikke forbundet";
-  $("connection-detail").textContent = connected ? (auth?.email || "Google Kalender er klar") : "Forbind Google Kalender for at starte";
+  $("connection-detail").textContent = connected ? (auth?.email || "Google Kalender er klar") : "Log ind for at starte";
   return connected;
 }
 // Show the connection instructions whenever there is no linked Google account.
@@ -66,6 +75,15 @@ function formatDateTime(value) {
   if (!value) return "";
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? "" : date.toLocaleString("da-DK", { weekday:"long", day:"numeric", month:"long", hour:"2-digit", minute:"2-digit" });
+}
+// Kort tidspunkt til smalle kort: "i dag kl. 10.39" eller "17. nov. kl. 10.39".
+function formatShort(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const time = date.toLocaleTimeString("da-DK", { hour: "2-digit", minute: "2-digit" });
+  const day = date.toDateString() === new Date().toDateString()
+    ? "i dag" : date.toLocaleDateString("da-DK", { day: "numeric", month: "short" });
+  return `${day} kl. ${time}`;
 }
 // Format a lesson time as HH:MM in the Danish locale.
 const formatClock = value => new Date(value).toLocaleTimeString("da-DK", { hour: "2-digit", minute: "2-digit" });
@@ -114,12 +132,11 @@ async function refreshDashboard(connected = true) {
   // Keep the disconnected message visible rather than replacing it with a stale status.
   if (connected && status?.lastStatus) setStatus(status.lastStatus);
   if (status?.lastUpdated) {
-    const date = formatDateTime(status.lastUpdated);
-    updated.textContent = date || "Ukendt tidspunkt";
-    $("last-sync-detail").textContent = status.lastStatus?.ok ? "Seneste synkronisering gennemført" : "Seneste forsøg";
+    updated.textContent = formatShort(status.lastUpdated) || "Ukendt tidspunkt";
+    $("last-sync-detail").textContent = status.lastStatus?.ok ? "Gennemført" : "Forsøget fejlede";
   } else {
     updated.textContent = "Aldrig";
-    $("last-sync-detail").textContent = "Ingen synkronisering endnu";
+    $("last-sync-detail").textContent = "Endnu ikke kørt";
   }
   // Avoid a Google API request when no account is connected.
   const data = connected ? await message("STUDIESYNC_DASHBOARD") : null;
