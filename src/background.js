@@ -270,27 +270,30 @@ async function getManagedEvents(token, calendarId, timeMin, timeMax) {
   return events.filter(event => event.extendedProperties?.private?.[MANAGED_KEY]);
 }
 
-// Henter næste kommende lektion fra den kalender, StudieSync selv administrerer.
+// Henter dagens lektioner (hele dagen, også dem der er overstået) fra den kalender, StudieSync selv administrerer.
 async function dashboardData() {
   const { calendarId } = await storageGet(["calendarId"]);
-  if (!calendarId) return { nextLesson: null };
+  if (!calendarId) return { todayLessons: [] };
   const result = await withTokenRetry(() => googleToken(false), token => {
-    const now = new Date();
-    const until = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+    const dayStart = new Date();
+    dayStart.setHours(0, 0, 0, 0);
+    const dayEnd = new Date(dayStart);
+    dayEnd.setDate(dayEnd.getDate() + 1);
     const params = new URLSearchParams({
       singleEvents: "true", showDeleted: "false", orderBy: "startTime",
-      maxResults: "1", timeMin: now.toISOString(), timeMax: until.toISOString()
+      maxResults: "50", timeMin: dayStart.toISOString(), timeMax: dayEnd.toISOString()
     });
     return googleRequest(token, `/calendars/${encodeURIComponent(calendarId)}/events?${params}`);
   });
-  const event = result.items?.[0];
-  if (!event) return { nextLesson: null };
-  return { nextLesson: {
-    summary: event.summary || "Lektion",
-    start: event.start?.dateTime || event.start?.date || "",
-    end: event.end?.dateTime || event.end?.date || "",
-    location: event.location || ""
-  } };
+  const todayLessons = (result.items || [])
+    .filter(event => event.start?.dateTime) // heldagsbegivenheder er ikke lektioner
+    .map(event => ({
+      summary: event.summary || "Lektion",
+      start: event.start.dateTime,
+      end: event.end?.dateTime || "",
+      location: event.location || ""
+    }));
+  return { todayLessons };
 }
 
 // --- Kommunikation med Studie+-fanen ---
@@ -489,9 +492,9 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     storageGet(["lastStatus", "lastUpdated"]).then(sendResponse);
     return true;
   }
-  // Hent næste lektion til dashboardet
+  // Hent dagens skema til dashboardet (null = kunne ikke hentes)
   if (message?.type === "STUDIESYNC_DASHBOARD") {
-    dashboardData().then(sendResponse).catch(() => sendResponse({ nextLesson: null }));
+    dashboardData().then(sendResponse).catch(() => sendResponse({ todayLessons: null }));
     return true;
   }
   // Hent synkroniseringshistorikken.

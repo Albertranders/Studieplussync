@@ -57,7 +57,7 @@ Dashboardet giver et hurtigt overblik over:
 
 - **Forbindelse:** om Google Kalender er forbundet.
 - **Seneste synkronisering:** tidspunktet for seneste synkroniseringsforsøg.
-- **Næste lektion:** den næste kommende begivenhed i StudieSync-kalenderen.
+- **Dagens skema:** alle dagens lektioner fra StudieSync-kalenderen i en kolonne til højre. Den lektion, der er i gang, er fremhævet, og overståede lektioner er nedtonede.
 - **Synkroniseringshistorik:** tidligere kørsler, ændringer og eventuelle fejlkoder.
 
 ## Indstillinger

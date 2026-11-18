@@ -132,18 +132,12 @@ button.link { display: block; margin: 6px auto 0; padding: 6px; border: 0; backg
 .history-bad { color: var(--bad); }
 .history-empty { color: var(--muted); font-size: 11.5px; padding: 8px 2px; }
 
-/* Dashboard cards, next-lesson details, and metrics. */
+/* Dashboard-kort og målinger. */
 body { width: 370px; max-height: 620px; overflow-y: auto; }
 .dashboard-heading { display:flex; align-items:end; justify-content:space-between; margin: 8px 1px 12px; }
 .dashboard-heading h2 { margin:2px 0 0; font-size:19px; letter-spacing:-.3px; }
 .eyebrow { margin:0; color:var(--muted); font-size:9px; font-weight:750; letter-spacing:1.1px; }
 .version { color:var(--foot); font-size:10px; }
-.card-detail { margin:4px 0 0; color:var(--foot); font-size:10.5px; line-height:1.35; overflow-wrap:anywhere; }
-.next-card { grid-column:1 / -1; display:block; padding:14px; }
-.next-top { display:flex; justify-content:space-between; gap:10px; align-items:flex-start; }
-.next-subject { font-size:16px !important; }
-.next-badge { padding:4px 7px; border-radius:7px; background:var(--mark-bg); color:var(--accent-text); font-size:10px; white-space:nowrap; }
-.next-time { margin:9px 0 0; font-size:13px; font-weight:650; }
 .dashboard-actions { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:10px; }
 button.secondary { padding:9px 12px; border:1px solid var(--input-line); border-radius:9px; background:var(--card); color:var(--text); font:inherit; font-size:12px; font-weight:600; cursor:pointer; }
 button.secondary:hover { background:var(--hover); }
@@ -171,10 +165,6 @@ main { padding: 2px 18px 14px; }
 .status { margin: 5px 0 16px; padding: 12px 14px; }
 .dashboard-heading { margin: 0 1px 10px; }
 .dashboard-heading h2 { font-size: 21px; }
-.next-card { padding: 17px; margin-bottom: 10px; background:var(--card); border:1px solid var(--line); border-radius:14px; }
-.next-subject { font-size:17px !important; line-height:1.3; }
-.next-time { margin-top:10px; font-size:13px; }
-.next-badge { font-weight:650; }
 .metrics { display:grid; grid-template-columns:1fr 1fr; gap:9px; }
 .metric { min-width:0; padding:13px; border:1px solid var(--line); border-radius:12px; background:var(--card); }
 .metric-label { display:block; margin-bottom:7px; color:var(--muted); font-size:9px; font-weight:750; letter-spacing:.8px; }
@@ -239,3 +229,17 @@ body { min-height: 540px; }
 }
 .guide-status.neutral { color: var(--muted); }
 .guide-icon { white-space: pre-wrap; }
+
+/* Forsiden har to kolonner: oversigt til venstre og dagens skema til højre. */
+html:has(body.wide), body.wide { width: 760px; }
+.main-grid { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 16px; align-items: start; }
+.col-today { padding: 16px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; }
+.today-title { margin: 3px 0 12px; font-size: 17px; text-transform: capitalize; }
+.today-list { list-style: none; margin: 0; padding: 0; max-height: 400px; overflow-y: auto; }
+.today-item { display: grid; gap: 2px; padding: 9px 10px; margin-bottom: 6px; border: 1px solid var(--line); border-left: 3px solid var(--line); border-radius: 9px; background: var(--bg); }
+.today-item strong { font-size: 12.5px; line-height: 1.35; overflow-wrap: anywhere; }
+.today-time { color: var(--muted); font-size: 11px; font-weight: 650; }
+.today-item small { color: var(--foot); font-size: 10.5px; }
+.today-item.now { border-left-color: var(--accent-text); background: color-mix(in srgb, var(--accent) 10%, var(--card)); }
+.today-item.past { opacity: .5; }
+.today-empty { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.5; }

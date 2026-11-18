@@ -6,7 +6,7 @@
   <title>StudieSync</title>
   <link rel="stylesheet" href="./popup.css">
 </head>
-<body>
+<body class="wide">
 <!-- Shared popup header and navigation menu. -->
 <header class="top">
   <div class="brand"><div class="mark">S</div><div><h1>StudieSync</h1><p>Studie+ → Google Kalender</p></div></div>
@@ -23,14 +23,12 @@
   </div>
 </header>
 
-<!-- Main dashboard, connection status, next lesson, and history. -->
+<!-- Main dashboard: status, sync controls and history (left), today's schedule (right). -->
 <main id="view-main">
   <section class="status" aria-live="polite"><span id="dot" class="dot"></span><div><strong id="state">Klar til synkronisering</strong><p id="detail">Log ind på Studie+ i en fane.</p></div></section>
+  <div class="main-grid">
+  <div class="col-left">
   <div class="dashboard-heading"><div><p class="eyebrow">OVERSIGT</p><h2>Dit skema</h2></div><span id="version" class="version"></span></div>
-  <section class="next-card" aria-label="Næste lektion">
-    <div class="next-top"><div><p class="eyebrow">NÆSTE LEKTION</p><strong id="next-subject" class="next-subject">Intet skema indlæst</strong></div><span id="next-badge" class="next-badge">Afventer</span></div>
-    <p id="next-time" class="next-time">Synkronisér for at hente dit skema.</p><p id="next-meta" class="card-detail"></p>
-  </section>
   <section class="metrics" aria-label="Synkroniseringsstatus">
     <article class="metric"><span class="metric-label">FORBINDELSE</span><strong id="connection-value">Kontrollerer…</strong><small id="connection-detail">Google Kalender</small></article>
     <article class="metric"><span class="metric-label">SIDST SYNKRONISERET</span><strong id="last-sync-value">Aldrig</strong><small id="last-sync-detail">Ingen synkronisering endnu</small></article>
@@ -41,6 +39,14 @@
   <div class="dashboard-actions"><button id="history-toggle" class="link history-toggle" aria-expanded="false" aria-controls="history-panel">Vis synkroniseringshistorik</button></div>
   <section id="history-panel" class="history-panel" hidden aria-label="Synkroniseringshistorik"><div id="history-list"></div></section>
   <p class="foot credit">Udviklet af Albert Randers Jende</p>
+  </div>
+  <aside class="col-today" aria-label="Dagens skema">
+    <p class="eyebrow">I DAG</p>
+    <h2 id="today-title" class="today-title"></h2>
+    <ol id="today-list" class="today-list"></ol>
+    <p id="today-empty" class="today-empty" hidden></p>
+  </aside>
+  </div>
 </main>
 
 <!-- First-run onboarding flow. -->
