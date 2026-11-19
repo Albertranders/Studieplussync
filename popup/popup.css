@@ -203,7 +203,9 @@ html, body { width: 420px; max-height: none; overflow: hidden; }
 .guide-action { margin-top: 14px; }
 .guide-tip { line-height: 1.45; }
 
-body { min-height: 540px; }
+/* Højden følger indholdet (ingen fast mindstehøjde). Chrome begrænser selv en popup til 600 px, så
+   længere visninger, fx indstillinger, ruller i stedet for at blive klippet. */
+body { min-height: 0; max-height: 600px; overflow-y: auto; }
 
 /* Result panel for the current onboarding step. */
 .guide-status {
