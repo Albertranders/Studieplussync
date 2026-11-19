@@ -6,15 +6,44 @@
   // Use the active page origin so requests and session cookies target the correct domain.
   const BASE = location.origin;
   const MODULE = globalThis.STUDIESYNC_CONFIG.studiePlusModule;                      // navnet på skema-modulet
-  let discoveryPromise;                        // cache, så vi kun slår versionen op én gang
+  let discoveryPromise;                        // cache, så vi kun slår versionen op én gang pr. fane
+
+  // Permutation og service-hash gemmes også i browserens lager, så de to store filer fra Studie+
+  // ikke hentes igen ved hver genindlæsning af fanen. De ændrer sig kun, når Studie+ opdateres,
+  // og en forældet kopi opdages og rettes automatisk (se fetchSchedule).
+  const DISCOVERY_KEY = "gwtDiscovery";
+  const DISCOVERY_TTL_MS = 12 * 60 * 60 * 1000; // højst 12 timer, selv hvis ingen fejl opdages
+  const HEX32 = /^[A-F0-9]{32}$/;
+
+  // Læser en gemt, gyldig opdagelse for denne adresse. Alt uventet behandles som "ingen cache".
+  async function readStoredDiscovery(moduleBase) {
+    try {
+      const saved = (await chrome.storage.local.get(DISCOVERY_KEY))[DISCOVERY_KEY];
+      if (!saved || saved.moduleBase !== moduleBase) return null;
+      if (!HEX32.test(saved.permutation) || !HEX32.test(saved.serviceHash)) return null;
+      const age = Date.now() - Number(saved.at);
+      if (!(age >= 0 && age < DISCOVERY_TTL_MS)) return null;
+      return { moduleBase, permutation: saved.permutation, serviceHash: saved.serviceHash };
+    } catch {
+      return null;
+    }
+  }
+  function storeDiscovery(value) {
+    try { chrome.storage.local.set({ [DISCOVERY_KEY]: { ...value, at: Date.now() } }).catch(() => {}); } catch { /* valgfri optimering */ }
+  }
+  async function forgetDiscovery() {
+    try { await chrome.storage.local.remove(DISCOVERY_KEY); } catch { /* valgfri optimering */ }
+  }
 
   // Finder de værdier, serveren kræver: GWT-"permutation" (version af klientkoden)
   // og skemaservicens hash. Begge står i Studie+'s egne JavaScript-filer og skifter ved opdateringer.
   function discover() {
     if (discoveryPromise) return discoveryPromise;
     discoveryPromise = (async () => {
-      // Trin 1: hent modulets "loader"-fil
       const moduleBase = `${BASE}/${MODULE}/${MODULE}/`;
+      const stored = await readStoredDiscovery(moduleBase);
+      if (stored) return stored;
+      // Trin 1: hent modulets "loader"-fil
       const loader = await fetch(`${moduleBase}${MODULE}.nocache.js`, {
         credentials: "include",
         cache: "no-store"
@@ -26,9 +55,9 @@
       if (!permutation) throw new StudySyncError("E305", "Kunne ikke finde Studie+ GWT-versionen.");
 
       // Trin 2: hent den version af klientkoden, der hører til permutationen
+      // Filen har permutationen i navnet og ændres aldrig, så browserens egen cache må bruges.
       const cache = await fetch(`${moduleBase}${permutation}.cache.js`, {
-        credentials: "include",
-        cache: "no-store"
+        credentials: "include"
       });
       if (!cache.ok) throw new StudySyncError("E304", `Studie+ cache HTTP ${cache.status}`);
       const cacheText = await cache.text();
@@ -38,7 +67,9 @@
           .map(match => [match[1], match[2]])
       );
       if (!hashes.skemaservice) throw new StudySyncError("E305", "Studie+ skemaservice blev ikke fundet.");
-      return { moduleBase, permutation, serviceHash: hashes.skemaservice };
+      const value = { moduleBase, permutation, serviceHash: hashes.skemaservice };
+      storeDiscovery(value);
+      return value;
     // Ved fejl nulstilles cachen, så næste kald prøver forfra
     })().catch(error => {
       discoveryPromise = null;
@@ -325,6 +356,7 @@
     } catch (error) {
       if (!STALE_CODES.has(error?.code)) throw error;
       discoveryPromise = null;
+      await forgetDiscovery(); // glem også den gemte kopi, så der slås frisk op
       return await fetchScheduleOnce(startDate, endDate);
     }
   }

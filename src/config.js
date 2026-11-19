@@ -48,8 +48,11 @@ globalThis.STUDIESYNC_CONFIG = {
   studiePlusModule: "skema",
 
   // Pause mellem skrivninger til Google Kalender (millisekunder), så Google ikke
-  // begrænser antallet af kald.
-  writeDelayMs: 300,
+  // begrænser antallet af kald. Pausen gælder pr. parallel skrivning (se writeConcurrency).
+  writeDelayMs: 200,
+
+  // Antal skrivninger til Google Kalender, der kører samtidigt. Sæt til 1 for at skrive én ad gangen.
+  writeConcurrency: 3,
 
   // Maks. antal forsøg pr. kald til Google Kalender, før der gives op.
   maxTries: 6,

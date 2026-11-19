@@ -90,7 +90,8 @@ Alle standardindstillinger står i **`src/config.js`**. Åbn filen i en tekstedi
 | `maxWeeks` | `12` | Øvre grænse for antal uger |
 | `googleClientId` | (udfyldt) | Avanceret: Google Client ID. Ret kun, hvis du bruger dit eget Google-projekt |
 | `studiePlusModule` | `skema` | Avanceret: navn på Studie+'s skema-modul |
-| `writeDelayMs` | `300` | Avanceret: pause mellem skrivninger til Google Kalender |
+| `writeDelayMs` | `200` | Avanceret: pause mellem skrivninger til Google Kalender (pr. parallel skrivning) |
+| `writeConcurrency` | `3` | Avanceret: antal skrivninger til Google Kalender på samme tid |
 | `maxTries` | `6` | Avanceret: antal forsøg pr. Google-kald |
 
 `defaultWeeks`, `autoSyncMinutes` og `calendarName` er startværdier. Det, du vælger i menuen **Indstillinger**, vinder over dem. Ændringer i `src/config.js` gælder, når du har genindlæst udvidelsen.

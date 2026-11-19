@@ -33,10 +33,11 @@ export function timeZoneLabel(zone, date = new Date()) {
 
 // Return labeled time zones ordered by UTC offset and then zone name.
 export function timeZoneOptions(zones, date = new Date()) {
+  // Forskydningen beregnes kun én gang pr. zone (det er den dyre del, ca. 400 zoner i alt).
   return zones
     .map(zone => ({ zone, offset: timeZoneOffsetMinutes(zone, date) }))
     .sort((a, b) => a.offset - b.offset || a.zone.localeCompare(b.zone))
-    .map(({ zone }) => [zone, timeZoneLabel(zone, date)]);
+    .map(({ zone, offset }) => [zone, `(${formatOffset(offset)}) ${zone.replaceAll("_", " ")}`]);
 }
 
 // Merge saved choices with defaults and replace invalid stored values with safe defaults.

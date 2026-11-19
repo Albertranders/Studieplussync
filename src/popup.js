@@ -1,6 +1,8 @@
 // Render the popup dashboard, onboarding guide, navigation menu, and settings.
-import { INTERVAL_CHOICES, THEME_CHOICES, WEEK_CHOICES, autoSyncText, resolveSettings, timeZoneOptions } from "./settings.js";
+import { INTERVAL_CHOICES, THEME_CHOICES, WEEK_CHOICES, autoSyncText, resolveSettings, timeZoneLabel, timeZoneOptions } from "./settings.js";
 import { canOpenGuide, shouldAutoOpenGuide } from "./onboarding.js";
+import { isConnected } from "./auth.js";
+import { todayLessons } from "./lessons-cache.js";
 
 const CONFIG = globalThis.STUDIESYNC_CONFIG;
 const $ = id => document.getElementById(id);
@@ -44,6 +46,7 @@ function showView(name) {
   viewMain.hidden = name !== "main";
   viewSettings.hidden = name !== "settings";
   viewGuide.hidden = name !== "guide";
+  if (name === "settings") ensureTimeZones();
   document.body.classList.toggle("wide", name === "main"); // to kolonner på forsiden
 }
 // Synchronize the menu's visibility and accessibility state.
@@ -56,15 +59,16 @@ document.addEventListener("click", event => { if (!menu.contains(event.target) &
 document.addEventListener("keydown", event => { if (event.key === "Escape") openMenu(false); });
 
 // Read the connected Google account and update account-dependent controls.
-async function refreshAuth() {
-  const auth = await message("STUDIESYNC_AUTH_STATE");
-  const connected = Boolean(auth?.connected);
+async function refreshAuth(stored) {
+  stored ??= await chrome.storage.local.get(["googleConnected", "loginHint", "webToken"]);
+  const auth = { connected: isConnected(stored), email: stored.loginHint || "" };
+  const connected = Boolean(auth.connected);
   connectButton.hidden = connected;
   syncButton.hidden = !connected;
   $("menu-account").hidden = !connected;
-  $("menu-email").textContent = auth?.email ? `Forbundet som ${auth.email}` : "Google-konto forbundet";
+  $("menu-email").textContent = auth.email ? `Forbundet som ${auth.email}` : "Google-konto forbundet";
   $("connection-value").textContent = connected ? "Google forbundet" : "Ikke forbundet";
-  $("connection-detail").textContent = connected ? (auth?.email || "Google Kalender er klar") : "Log ind for at starte";
+  $("connection-detail").textContent = connected ? (auth.email || "Google Kalender er klar") : "Log ind for at starte";
   return connected;
 }
 // Show the connection instructions whenever there is no linked Google account.
@@ -88,13 +92,14 @@ function formatShort(value) {
 // Format a lesson time as HH:MM in the Danish locale.
 const formatClock = value => new Date(value).toLocaleTimeString("da-DK", { hour: "2-digit", minute: "2-digit" });
 
-// Show today's complete schedule. `lessons` is null when it could not be loaded.
+// Show today's complete schedule. `lessons` is a list, "loading" or "failed".
 function renderToday(lessons, connected) {
   const list = $("today-list"), empty = $("today-empty");
   $("today-title").textContent = new Date().toLocaleDateString("da-DK", { weekday: "long", day: "numeric", month: "long" });
   list.replaceChildren();
   const emptyText = !connected ? "Forbind Google Kalender for at se dagens skema."
-    : lessons === null ? "Dagens skema kunne ikke hentes. Prøv igen om lidt."
+    : lessons === "loading" ? "Henter dagens skema…"
+    : lessons === "failed" ? "Dagens skema kunne ikke hentes. Synkronisér for at hente det."
     : !lessons?.length ? "Ingen lektioner i dag. Synkronisér, hvis det ikke passer."
     : "";
   empty.textContent = emptyText;
@@ -126,27 +131,31 @@ function renderToday(lessons, connected) {
     list.append(row);
   }
 }
-// Refresh sync metadata and fetch the next lesson only when Google is connected.
-async function refreshDashboard(connected = true) {
-  const status = await message("STUDIESYNC_STATUS");
+// Refresh sync metadata and today's schedule. Everything comes from the local storage, so it is instant.
+async function refreshDashboard(connected = true, stored) {
+  stored ??= await chrome.storage.local.get(["lastStatus", "lastUpdated", "lessonsCache"]);
   // Keep the disconnected message visible rather than replacing it with a stale status.
-  if (connected && status?.lastStatus) setStatus(status.lastStatus);
-  if (status?.lastUpdated) {
-    updated.textContent = formatShort(status.lastUpdated) || "Ukendt tidspunkt";
-    $("last-sync-detail").textContent = status.lastStatus?.ok ? "Gennemført" : "Forsøget fejlede";
+  if (connected && stored.lastStatus) setStatus(stored.lastStatus);
+  if (stored.lastUpdated) {
+    updated.textContent = formatShort(stored.lastUpdated) || "Ukendt tidspunkt";
+    $("last-sync-detail").textContent = stored.lastStatus?.ok ? "Gennemført" : "Forsøget fejlede";
   } else {
     updated.textContent = "Aldrig";
     $("last-sync-detail").textContent = "Endnu ikke kørt";
   }
-  // Avoid a Google API request when no account is connected.
-  const data = connected ? await message("STUDIESYNC_DASHBOARD") : null;
-  renderToday(connected ? (data ? data.todayLessons ?? null : null) : [], connected);
+  if (!connected) { renderToday([], false); return; }
+  const lessons = todayLessons(stored.lessonsCache);
+  if (lessons) { renderToday(lessons, true); return; }
+  // Ingen lokal kopi endnu (fx lige efter en opdatering): vis en besked med det samme, og hent dagens
+  // skema fra Google i baggrunden. Efter næste synkronisering findes kopien, og det sker ikke igen.
+  renderToday("loading", true);
+  message("STUDIESYNC_DASHBOARD").then(data => renderToday(data?.todayLessons ?? "failed", true));
 }
 // Render stored sync history using DOM nodes and textContent rather than HTML strings.
 async function renderHistory() {
   const list = $("history-list");
   list.replaceChildren();
-  const history = await message("STUDIESYNC_HISTORY");
+  const { syncHistory: history } = await chrome.storage.local.get(["syncHistory"]);
   if (!Array.isArray(history) || !history.length) {
     const empty = document.createElement("p");
     empty.className = "history-empty"; empty.textContent = "Der er endnu ingen synkroniseringer.";
@@ -218,7 +227,7 @@ async function connectGoogle() {
 // Run a calendar sync and refresh the dashboard and visible history afterward.
 async function syncCalendar() {
   syncButton.disabled = true;
-  setBusy("Synkroniserer…", "Henter skema og opdaterer kalenderen. Første synkronisering kan tage op til 10 minutter.");
+  setBusy("Synkroniserer…", "Henter skema og opdaterer kalenderen. Første synkronisering kan tage lidt tid.");
   const result = await message("STUDIESYNC_SYNC");
   syncButton.disabled = false;
   if (result?.busy) setBusy(result.message, result.detail);
@@ -233,7 +242,7 @@ syncButton.addEventListener("click", syncCalendar);
 const guideSteps = [
   { icon:"1", title:"Åbn Studie+", body:"Åbn Studie+ i en browserfane, og log ind. Lad fanen være åben, mens StudieSync bruges.", tip:"StudieSync bruger din aktive session. Du skal ikke indtaste din Studie+-adgangskode i udvidelsen.", action:"Test Studie+ forbindelse", task:"studyplus" },
   { icon:"2", title:"Forbind Google Kalender", body:"Forbind din Google-konto, og giv StudieSync adgang til at oprette og opdatere din skemakalender.", tip:"Brug den Google-konto, du vil have skemaet vist i.", action:"Forbind Google Kalender", task:"google" },
-  { icon:"3", title:"Synkronisér dit skema", body:"Start synkroniseringen. StudieSync henter dine lektioner og opretter dem i sin egen kalender i Google Kalender.", tip:"Den første synkronisering kan godt tage op til 10 minutter. Lad vinduet være åbent, indtil den er færdig.", action:"Synkronisér skema", task:"sync" },
+  { icon:"3", title:"Synkronisér dit skema", body:"Start synkroniseringen. StudieSync henter dine lektioner og opretter dem i sin egen kalender i Google Kalender.", tip:"Den første synkronisering kan tage lidt tid, hvis skemaet er langt. Lad vinduet være åbent, indtil den er færdig.", action:"Synkronisér skema", task:"sync" },
   { icon:"4", title:"Tilpas indstillingerne", body:"Vælg antal uger, automatisk synkronisering, tidszone, kalendernavn og farvetema under Indstillinger. Dine valg gemmes automatisk.", tip:"Automatisk synkronisering kræver, at browseren kører, og at en Studie+-fane er åben og logget ind.", action:"Åbn indstillinger", task:"settings" },
   { icon:"!", title:"HUSK!", body:"StudieSync fungerer kun, så længe Studie+ er åben i en browserfane, og du er logget ind. Lukker du Studie+, kan StudieSync ikke hente eller opdatere dit skema.", tip:"Lad Studie+-fanen være åben, når du bruger automatisk synkronisering.", action:"Afslut introduktion", task:"finish" }
 ];
@@ -241,8 +250,8 @@ let guideIndex = 0;
 let guideCompletedSteps = [];
 let guideIsCompleted = false;
 // Load the persisted completion state for each onboarding step.
-async function loadGuideProgress() {
-  const stored = await chrome.storage.local.get(["guideCompletedSteps"]);
+async function loadGuideProgress(stored) {
+  stored ??= await chrome.storage.local.get(["guideCompletedSteps"]);
   guideCompletedSteps = Array.isArray(stored.guideCompletedSteps)
     ? guideSteps.map((_, i) => stored.guideCompletedSteps.includes(i))
     : guideSteps.map(() => false);
@@ -391,14 +400,27 @@ function fillChoices(settings) {
   const minutes = [...new Set([...INTERVAL_CHOICES, settings.autoSyncMinutes])].sort((a,b)=>a-b);
   fillSelect($("weeks"), weeks, weekLabel); fillSelect($("interval"), minutes, minutesLabel);
 }
-// Populate the time-zone selector with supported zones and the selected value.
+// Tidszonelisten har ca. 400 poster og er dyr at bygge. Før indstillingerne åbnes, indeholder
+// vælgeren kun den valgte zone; den fulde liste bygges første gang, den skal bruges.
+let zonesBuilt = false;
 function fillTimeZones(selected) {
   const select = $("timeZone");
+  if (zonesBuilt && ![...select.options].some(option => option.value === selected)) {
+    select.add(new Option(timeZoneLabel(selected), selected));
+  } else if (!zonesBuilt) {
+    select.replaceChildren(new Option(timeZoneLabel(selected), selected));
+  }
+  select.value = selected;
+}
+function ensureTimeZones() {
+  if (zonesBuilt) return;
+  zonesBuilt = true;
+  const select = $("timeZone"), selected = select.value;
   const zones = typeof Intl.supportedValuesOf === "function" ? Intl.supportedValuesOf("timeZone") : [selected];
   if (!zones.includes("UTC")) zones.push("UTC");
   if (!zones.includes(selected)) zones.push(selected);
   select.replaceChildren();
-  for (const [id,label] of timeZoneOptions(zones)) select.add(new Option(label,id));
+  for (const [id, label] of timeZoneOptions(zones)) select.add(new Option(label, id));
   select.value = selected;
 }
 // Apply an explicit light/dark theme or defer to the browser's system preference.
@@ -453,15 +475,24 @@ $("back").addEventListener("click", async () => {
 });
 
 // Initialize settings, version, account state, dashboard, and onboarding state.
+// Alt hentes i ét kald til lageret, så popup'en kan tegnes straks uden at vente på baggrundsscriptet.
+const LOAD_KEYS = [
+  "scheduleWeeks", "autoSync", "autoSyncMinutes", "calendarName", "timeZone", "theme",
+  "googleConnected", "loginHint", "webToken", "lastStatus", "lastUpdated", "lessonsCache",
+  "guideCompletedSteps", "guideCompleted", "guideAutoOpened"
+];
 async function load() {
-  showSettings(await loadSettings());
+  const stored = await chrome.storage.local.get(LOAD_KEYS);
+  const settings = resolveSettings(stored, CONFIG);
+  applyTheme(settings.theme);
+  showSettings(settings);
   const manifest = chrome.runtime.getManifest();
   $("version").textContent = `v${manifest.version}`;
-  const connected = await refreshAuth();
+  const connected = await refreshAuth(stored);
   if (!connected) showNotConnected();
-  await refreshDashboard(connected);
-  await loadGuideProgress();
-  const { guideCompleted, guideAutoOpened } = await chrome.storage.local.get(["guideCompleted", "guideAutoOpened"]);
+  await refreshDashboard(connected, stored);
+  await loadGuideProgress(stored);
+  const { guideCompleted, guideAutoOpened } = stored;
   guideIsCompleted = Boolean(guideCompleted);
   $("guide-entry").hidden = !canOpenGuide({ guideCompleted: guideIsCompleted });
   $("guide-setting-status").textContent = guideCompletedSteps.every(Boolean)
@@ -472,6 +503,8 @@ async function load() {
     await chrome.storage.local.set({ guideAutoOpened: true });
     await openGuide();
   }
+  // Byg den fulde tidszoneliste i ro og mag, når popup'en er tegnet.
+  (globalThis.requestIdleCallback || (fn => setTimeout(fn, 300)))(ensureTimeZones);
 }
 load().catch(error => {
   setBusy("Dashboard kunne ikke indlæses", error?.message || "Genindlæs udvidelsen, og prøv igen.");

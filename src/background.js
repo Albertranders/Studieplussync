@@ -7,6 +7,8 @@ import { resolveSettings } from "./settings.js";
 import { appendHistory, createHistoryEntry } from "./history.js";
 import { createSyncLock } from "./sync-lock.js";
 import { addPartialProgressToStatus, createSyncProgress } from "./sync-progress.js";
+import { runWithLimit } from "./concurrency.js";
+import { buildLessonsCache } from "./lessons-cache.js";
 
 // The configured web OAuth client must allow chrome.identity's redirect URL.
 const CONFIG = globalThis.STUDIESYNC_CONFIG; // Shared defaults and integration settings.
@@ -175,7 +177,9 @@ async function switchGoogleAccount() {
 
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 const WRITE_DELAY_MS = CONFIG.writeDelayMs;   // pause mellem skrivninger, så Google ikke rate-limiter
+const WRITE_CONCURRENCY = Math.max(1, Math.round(Number(CONFIG.writeConcurrency) || 1)); // skrivninger på én gang
 const MAX_TRIES = CONFIG.maxTries;          // maks. antal forsøg pr. kald
+let cooldownUntil = 0;                      // fælles pause, når Google beder os sænke farten
 
 // Er svaret en "du kalder for hurtigt"-fejl fra Google?
 function isRateLimited(status, body) {
@@ -195,6 +199,9 @@ function googleErrorCode(status, body) {
 // Udfører ét kald mod Google Calendar. Prøver igen ved rate limit og serverfejl (5xx)
 async function googleRequest(token, path, options = {}) {
   for (let attempt = 1; ; attempt++) {
+    // Beder Google os vente, venter alle parallelle kald, så de ikke alle rammer grænsen igen.
+    const pause = cooldownUntil - Date.now();
+    if (pause > 0) await sleep(pause);
     const response = await fetch(calendarUrl(path), {
       ...options,
       headers: {
@@ -219,6 +226,7 @@ async function googleRequest(token, path, options = {}) {
     // Vent så længe Google beder om, ellers eksponentiel ventetid (maks. 30 sek.) + lidt tilfældighed
     const retryAfter = Number(response.headers.get("Retry-After"));
     const wait = retryAfter > 0 ? retryAfter * 1000 : Math.min(1000 * 2 ** attempt, 30000);
+    if (isRateLimited(response.status, body)) cooldownUntil = Math.max(cooldownUntil, Date.now() + wait);
     await sleep(wait + Math.random() * 500);
   }
 }
@@ -226,19 +234,12 @@ async function googleRequest(token, path, options = {}) {
 // --- Kalender og events ---
 
 // Finder id'et på vores kalender (gemt fra sidst) eller opretter den.
-// Den gemte kalender tjekkes, for den kan være slettet, eller være oprettet af en anden
-// OAuth-klient (fx Chrome vs. Opera), som scopet calendar.app.created ikke kan se (404).
+// Den gemte kalender kan være slettet, eller være oprettet af en anden OAuth-klient (fx Chrome vs. Opera),
+// som scopet calendar.app.created ikke kan se (404). Det opdages, når events hentes (se performSyncNow),
+// så der ikke bruges et ekstra kald til Google ved hver synkronisering.
 async function ensureCalendar(token) {
   const { calendarId } = await storageGet(["calendarId"]);
-  if (calendarId) {
-    try {
-      await googleRequest(token, `/calendars/${encodeURIComponent(calendarId)}`);
-      return calendarId;
-    } catch (error) {
-      if (error.status !== 404 && error.status !== 410) throw error;
-      await storageSet({ calendarId: null }); // findes ikke mere: opret en ny nedenfor
-    }
-  }
+  if (calendarId) return calendarId;
   const { calendarName, timeZone } = await getSettings();
   const created = await googleRequest(token, "/calendars", {
     method: "POST",
@@ -353,29 +354,26 @@ async function testConnection() {
 
 // --- Selve synkroniseringen ---
 
-// Udfører planen mod Google: opret, opdater og slet – med pauser mellem hvert kald
+// Udfører planen mod Google: opret, opdater og slet. Skrivningerne køres få ad gangen med en lille
+// pause pr. kanal; sker der en fejl, startes intet nyt, og den første fejl kastes.
 async function applyPlan(token, calendarId, plan, timeZone, progress) {
   const base = `/calendars/${encodeURIComponent(calendarId)}/events`;
-  for (const item of plan.create) {
-    const body = eventBody(item.lesson, timeZone);
-    // Tilføj de skjulte felter, så vi kan genkende eventet næste gang
-    body.extendedProperties = { private: { [MANAGED_KEY]: item.key, [MANAGED_HASH]: contentHash(item.lesson, timeZone) } };
-    await googleRequest(token, base, { method: "POST", body: JSON.stringify(body) });
-    progress.record("created");
+  // Tilføj de skjulte felter, så vi kan genkende eventet næste gang
+  const bodyFor = item => ({
+    ...eventBody(item.lesson, timeZone),
+    extendedProperties: { private: { [MANAGED_KEY]: item.key, [MANAGED_HASH]: contentHash(item.lesson, timeZone) } }
+  });
+  const step = async (type, request) => {
+    await request();
+    progress.record(type);
     await sleep(WRITE_DELAY_MS);
-  }
-  for (const item of plan.update) {
-    const body = eventBody(item.lesson, timeZone);
-    body.extendedProperties = { private: { [MANAGED_KEY]: item.key, [MANAGED_HASH]: contentHash(item.lesson, timeZone) } };
-    await googleRequest(token, `${base}/${encodeURIComponent(item.id)}`, { method: "PATCH", body: JSON.stringify(body) });
-    progress.record("updated");
-    await sleep(WRITE_DELAY_MS);
-  }
-  for (const id of plan.delete) {
-    await googleRequest(token, `${base}/${encodeURIComponent(id)}`, { method: "DELETE" });
-    progress.record("deleted");
-    await sleep(WRITE_DELAY_MS);
-  }
+  };
+  await runWithLimit(plan.create, WRITE_CONCURRENCY, item =>
+    step("created", () => googleRequest(token, base, { method: "POST", body: JSON.stringify(bodyFor(item)) })));
+  await runWithLimit(plan.update, WRITE_CONCURRENCY, item =>
+    step("updated", () => googleRequest(token, `${base}/${encodeURIComponent(item.id)}`, { method: "PATCH", body: JSON.stringify(bodyFor(item)) })));
+  await runWithLimit(plan.delete, WRITE_CONCURRENCY, id =>
+    step("deleted", () => googleRequest(token, `${base}/${encodeURIComponent(id)}`, { method: "DELETE" })));
 }
 
 // Hele flowet: hent skema -> valider -> sammenlign med kalenderen -> udfør ændringer.
@@ -385,7 +383,11 @@ async function performSyncNow(interactive = false, trigger = "manual") {
   try {
     const tab = await findStudyPlusTab();
     if (!tab) throw new StudySyncError("E301");
+    // Varm Google-tokenet op, mens skemaet hentes fra Studie+, så fornyelsen ikke ligger oveni ventetiden.
+    // Fejl ignoreres her; de håndteres på normal vis, når tokenet skal bruges.
+    const warmToken = googleToken(false).catch(() => {});
     const result = await readSchedule(tab);
+    await warmToken;
     const lessons = result.lessons;
     // Går noget galt her, stopper vi, før kalenderen røres
     if (!isSafeSchedule(lessons)) throw new StudySyncError("E501", "Skemaet kunne ikke valideres. Kalenderen er ikke ændret.");
@@ -393,13 +395,22 @@ async function performSyncNow(interactive = false, trigger = "manual") {
     // Afviser Google tokenet (401), ryddes det i googleRequest, og hele Google-delen prøves én gang
     // til med et nyt token (stille fornyelse først). Planen beregnes forfra, så et genforsøg er sikkert.
     const plan = await withTokenRetry(() => googleToken(interactive), async token => {
-      const calendarId = await ensureCalendar(token);
+      let calendarId = await ensureCalendar(token);
       // Find tidsrummet skemaet dækker (første til sidste dato, inkl. sidste dag)
       // Brug den hentede periode, så lektioner der er aflyst i periodens ende også ryddes.
       const start = new Date(`${result.dateRange.start}T00:00:00`);
       const end = new Date(`${result.dateRange.end}T00:00:00`);
       end.setDate(end.getDate() + 1);
-      const existing = await getManagedEvents(token, calendarId, start, end);
+      let existing;
+      try {
+        existing = await getManagedEvents(token, calendarId, start, end);
+      } catch (error) {
+        // Kalenderen findes ikke mere (slettet, eller oprettet af en anden konto/OAuth-klient): opret en ny.
+        if (error.status !== 404 && error.status !== 410) throw error;
+        await storageSet({ calendarId: null });
+        calendarId = await ensureCalendar(token);
+        existing = await getManagedEvents(token, calendarId, start, end);
+      }
       // Beskyt mod en delvis hentning, der ellers ville slette mange events
       if (isSuspiciousDrop(existing.length, lessons.length)) {
         throw new StudySyncError("E502", `Studie+: ${lessons.length} lektioner, kalender: ${existing.length}.`);
@@ -415,6 +426,8 @@ async function performSyncNow(interactive = false, trigger = "manual") {
       counts: { lessons: lessons.length, created: plan.create.length, updated: plan.update.length, deleted: plan.delete.length, unchanged: plan.unchanged },
       pageTitle: result.pageTitle
     };
+    // Gem en lokal kopi af skemaet, så popup'en kan vise dagens lektioner øjeblikkeligt.
+    await storageSet({ lessonsCache: buildLessonsCache(lessons, (await getSettings()).timeZone) });
     await recordSyncHistory(status, trigger);
     await sendStatus(status);
     return status;

@@ -4,6 +4,12 @@ Vigtige ændringer i StudieSync. Nyeste version står øverst.
 
 ## Ikke udgivet
 
+### Hurtigere
+- "I dag"-listen i popup'en vises nu øjeblikkeligt. Den læses fra en lokal kopi af det seneste synkroniserede skema i stedet for at spørge Google Kalender (og evt. forny login) hver gang popup'en åbnes.
+- Popup'en henter status, konto og historik direkte fra lageret i ét kald uden at vente på baggrundsscriptet, og den dyre tidszoneliste bygges først i ro og mag efter visning.
+- Studie+'s version (GWT-permutation og service-hash) gemmes i op til 12 timer, så de to store filer ikke hentes igen ved hver genindlæsning. En forældet kopi opdages og rettes automatisk.
+- Synkroniseringen skriver til Google Kalender tre events ad gangen (`writeConcurrency`) med kortere pause, springer et ekstra kalenderopslag over og fornyer Google-login, mens skemaet hentes fra Studie+.
+
 ### Tilføjet
 - Dashboard i popup'en med forbindelsesstatus, seneste synkronisering og versionsnummer.
 - Forsiden har to kolonner: til højre ligger overskriften og hele dagens skema (aktuel lektion fremhævet, overståede nedtonede, plads til 7 lektioner uden scroll). Til venstre ligger status, forbindelse, seneste synkronisering og knapper, med kortere tekster og mere luft.
