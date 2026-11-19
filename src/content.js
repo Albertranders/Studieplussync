@@ -44,6 +44,9 @@
     STUDIESYNC_READ_SCHEDULE: readSchedule
   };
 
+  // Fortæl baggrundsscriptet, at Studie+ er åbnet, så skemaet kan synkroniseres, mens du bruger siden.
+  try { chrome.runtime.sendMessage({ type: "STUDIESYNC_PAGE_READY" }, () => void chrome.runtime.lastError); } catch { /* udvidelsen er genindlæst */ }
+
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     const handler = handlers[message?.type];
     if (!handler) return; // ukendte beskeder ignoreres

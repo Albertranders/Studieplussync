@@ -11,6 +11,7 @@ Vigtige ændringer i StudieSync. Nyeste version står øverst.
 - Synkroniseringen skriver til Google Kalender tre events ad gangen (`writeConcurrency`) med kortere pause, springer et ekstra kalenderopslag over og fornyer Google-login, mens skemaet hentes fra Studie+.
 
 ### Tilføjet
+- Synkronisering, når Studie+ åbnes: content-scriptet melder, at siden er indlæst, og udvidelsen synkroniserer efter 3 sekunder, hvis automatisk synkronisering er slået til, Google er forbundet, og den seneste synkronisering er over 5 minutter gammel. Er Studie+ ikke klar eller ikke logget ind, springes det over uden fejlmarkering.
 - Dashboard i popup'en med forbindelsesstatus, seneste synkronisering og versionsnummer.
 - Forsiden har to kolonner: til højre ligger overskriften og hele dagens skema (aktuel lektion fremhævet, overståede nedtonede, plads til 7 lektioner uden scroll). Til venstre ligger status, forbindelse, seneste synkronisering og knapper, med kortere tekster og mere luft.
 - Introduktionsguide med kontrol af hvert trin, og indstillinger opdelt i Synkronisering, Kalender og Udseende.

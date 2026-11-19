@@ -51,6 +51,12 @@ globalThis.STUDIESYNC_CONFIG = {
   // begrænser antallet af kald. Pausen gælder pr. parallel skrivning (se writeConcurrency).
   writeDelayMs: 200,
 
+  // Synkronisering, når Studie+ åbnes: ventetid efter, at siden er indlæst (millisekunder), og hvor ny
+  // den seneste vellykkede synkronisering må være, før der springes over (minutter). Gælder kun, når
+  // automatisk synkronisering er slået til.
+  openSyncDelayMs: 3000,
+  openSyncMinAgeMinutes: 5,
+
   // Antal skrivninger til Google Kalender, der kører samtidigt. Sæt til 1 for at skrive én ad gangen.
   writeConcurrency: 3,
 

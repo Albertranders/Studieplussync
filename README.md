@@ -91,6 +91,8 @@ Alle standardindstillinger står i **`src/config.js`**. Åbn filen i en tekstedi
 | `googleClientId` | (udfyldt) | Avanceret: Google Client ID. Ret kun, hvis du bruger dit eget Google-projekt |
 | `studiePlusModule` | `skema` | Avanceret: navn på Studie+'s skema-modul |
 | `writeDelayMs` | `200` | Avanceret: pause mellem skrivninger til Google Kalender (pr. parallel skrivning) |
+| `openSyncDelayMs` | `3000` | Avanceret: ventetid (ms), før der synkroniseres, når Studie+ åbnes |
+| `openSyncMinAgeMinutes` | `5` | Avanceret: der synkroniseres ikke ved åbning, hvis den seneste synkronisering er yngre end dette (minutter) |
 | `writeConcurrency` | `3` | Avanceret: antal skrivninger til Google Kalender på samme tid |
 | `maxTries` | `6` | Avanceret: antal forsøg pr. Google-kald |
 
@@ -106,7 +108,7 @@ Udvidelsen bruger dit eksisterende login i Studie+. Den beder ikke om adgangskod
 
 Studie+ har ikke et officielt API, så hentningen bygger på uofficielle serverkald, som Studie+ kan ændre. Hvis skemaet ikke kan læses sikkert, stopper synkroniseringen uden at ændre kalenderen.
 
-Automatisk synkronisering sker, mens browseren kører (se `autoSyncMinutes` og menuen Indstillinger). Efter **Log ud af Google** synkroniseres der ikke, før en konto er forbundet igen. Studie+-fanen skal være åben og logget ind.
+Automatisk synkronisering sker, mens browseren kører (se `autoSyncMinutes` og menuen Indstillinger), og når du åbner Studie+: efter et par sekunder synkroniseres skemaet, hvis den seneste synkronisering er mere end 5 minutter gammel. Er du ikke logget ind endnu, springes det stille over. Efter **Log ud af Google** synkroniseres der ikke, før en konto er forbundet igen. Studie+-fanen skal være åben og logget ind.
 
 ## Fejlkoder
 

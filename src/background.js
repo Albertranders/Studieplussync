@@ -9,6 +9,7 @@ import { createSyncLock } from "./sync-lock.js";
 import { addPartialProgressToStatus, createSyncProgress } from "./sync-progress.js";
 import { runWithLimit } from "./concurrency.js";
 import { buildLessonsCache } from "./lessons-cache.js";
+import { isQuietFailure, shouldSyncOnOpen } from "./open-sync.js";
 
 // The configured web OAuth client must allow chrome.identity's redirect URL.
 const CONFIG = globalThis.STUDIESYNC_CONFIG; // Shared defaults and integration settings.
@@ -378,7 +379,7 @@ async function applyPlan(token, calendarId, plan, timeZone, progress) {
 
 // Hele flowet: hent skema -> valider -> sammenlign med kalenderen -> udfør ændringer.
 // `interactive` = må der vises Google-login, hvis token mangler? (false ved automatisk kørsel)
-async function performSyncNow(interactive = false, trigger = "manual") {
+async function performSyncNow(interactive = false, trigger = "manual", quiet = false) {
   const progress = createSyncProgress();
   try {
     const tab = await findStudyPlusTab();
@@ -434,14 +435,18 @@ async function performSyncNow(interactive = false, trigger = "manual") {
   } catch (error) {
     const status = addPartialProgressToStatus(STUDIESYNC_ERRORS.toStatus(error), progress.snapshot());
     if (error && typeof error === "object") error.syncStatus = status;
-    await recordSyncHistory(status, trigger);
-    await sendStatus(status);
+    // En synkronisering, der startede af sig selv, fordi Studie+ blev åbnet, må ikke give støj, hvis siden
+    // bare ikke er klar eller logget ind endnu. Den næste synkronisering prøver igen.
+    if (!(quiet && isQuietFailure(status.code))) {
+      await recordSyncHistory(status, trigger);
+      await sendStatus(status);
+    }
     throw error;
   }
 }
 
 // Sørger for, at alarm og manuelle klik aldrig udfører samme synkronisering samtidigt.
-async function syncNow(interactive = false, trigger = "manual") {
+async function syncNow(interactive = false, trigger = "manual", quiet = false) {
   const release = syncLock.tryAcquire();
   if (!release) {
     return {
@@ -452,7 +457,7 @@ async function syncNow(interactive = false, trigger = "manual") {
     };
   }
   try {
-    return await performSyncNow(interactive, trigger);
+    return await performSyncNow(interactive, trigger, quiet);
   } finally {
     release();
   }
@@ -494,12 +499,40 @@ chrome.runtime.onStartup.addListener(() => {
   restoreActionStatus().catch(() => {});
 });
 restoreActionStatus().catch(() => {});
+// Når Studie+ åbnes: vent et øjeblik, så siden og login kan nå at blive klar, og synkronisér, hvis
+// den seneste synkronisering ikke er helt ny. Flere faner, der åbner samtidigt, giver kun én kørsel.
+let openSyncPending = false;
+async function syncWhenStudyPlusOpens() {
+  if (openSyncPending) return;
+  openSyncPending = true;
+  try {
+    const stillDue = async () => {
+      const stored = await storageGet(["googleConnected", "loginHint", "webToken", "lessonsCache"]);
+      const { autoSync } = await getSettings();
+      return shouldSyncOnOpen({
+        autoSync, connected: isConnected(stored), lastSyncAt: stored.lessonsCache?.at,
+        minAgeMs: Math.max(0, Number(CONFIG.openSyncMinAgeMinutes) || 0) * 60000
+      });
+    };
+    if (!await stillDue()) return;
+    await sleep(Math.max(0, Number(CONFIG.openSyncDelayMs) || 0));
+    if (!await stillDue()) return; // en anden synkronisering nåede det i mellemtiden
+    await syncNow(false, "automatic", true);
+  } finally {
+    openSyncPending = false;
+  }
+}
 // Når alarmen udløses: synkronisér i baggrunden (uden login-vindue, fejl ignoreres)
 chrome.alarms.onAlarm.addListener(alarm => {
   if (alarm.name === ALARM_NAME) syncNow(false, "automatic").catch(() => {});
 });
 // Beskeder fra popup'en. `return true` betyder, at svaret sendes asynkront
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  // Studie+-siden er indlæst (sendes af content.js): synkronisér efter et lille delay
+  if (message?.type === "STUDIESYNC_PAGE_READY") {
+    syncWhenStudyPlusOpens().catch(() => {});
+    return false;
+  }
   // Hent seneste status til visning i popup'en
   if (message?.type === "STUDIESYNC_STATUS") {
     storageGet(["lastStatus", "lastUpdated"]).then(sendResponse);
