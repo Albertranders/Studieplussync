@@ -261,3 +261,7 @@ body.wide { max-height: 600px; overflow-y: auto; }
 .today-item.now { border-left-color: var(--accent-text); background: color-mix(in srgb, var(--accent) 10%, var(--card)); }
 .today-item.past { opacity: .5; }
 .today-empty { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
+
+/* Link til at oprette et GitHub-issue, når en fejl ikke kan løses med vejledningen. */
+.issue-link { display: inline-block; margin-top: 7px; font-size: 11.5px; font-weight: 600; color: var(--accent-text); text-decoration: underline; }
+.issue-link:hover { filter: brightness(1.15); }

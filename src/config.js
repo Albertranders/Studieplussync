@@ -19,8 +19,8 @@ globalThis.STUDIESYNC_CONFIG = {
   // IANA time zone used for lesson times.
   timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || "Europe/Copenhagen",
 
-  // Contact information shown with error codes in the popup.
-  developerContact: "Discord: Albertranders",
+  // Hvor brugere kan oprette et issue, hvis en fejl ikke kan løses med den vejledning, popup'en viser.
+  issuesUrl: "https://github.com/Albertranders/Studieplussync/issues",
 
   // --------------------------------------------------------------------------
   // 2. User-configurable synchronization settings.

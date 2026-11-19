@@ -19,7 +19,7 @@ test("leaves a failure status unchanged when no calendar writes completed", () =
 
 test("explains partial changes and includes safe counts", () => {
   const result = addPartialProgressToStatus(
-    { ok: false, code: "E204", message: "Fejl E204.", detail: "Kontakt udvikleren." },
+    { ok: false, code: "E204", message: "Fejl E204.", detail: "Prøv igen senere." },
     { created: 2, updated: 1, deleted: 0 }
   );
   assert.equal(result.partial, true);

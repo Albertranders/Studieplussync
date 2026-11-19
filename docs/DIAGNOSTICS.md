@@ -17,9 +17,11 @@ Prøv først den anbefalede løsning til fejlkoden. Genindlæs Studie+-fanen, hv
 
 Forbindelsestesten ændrer ikke Google Kalender.
 
-## 3. Oplysninger ved fejl
+## 3. Opret et issue ved fejl
 
-Hvis fejlen fortsætter, så gem disse oplysninger:
+Popup'en beskriver, hvad du selv kan gøre ved fejlen. Hjælper det ikke, kan du trykke på **Opret issue på GitHub** under fejlen, eller oprette et issue på https://github.com/Albertranders/Studieplussync/issues. Linket udfylder fejlkode, teknisk tekst og version for dig, og du gennemser og sender selv issuet.
+
+Oplys disse oplysninger i issuet:
 
 - Fejlkoden, for eksempel E301.
 - Den tekniske fejltekst fra popup'en.

@@ -4,6 +4,9 @@ Vigtige ændringer i StudieSync. Nyeste version står øverst.
 
 ## Ikke udgivet
 
+### Ændret (fejlbeskeder)
+- Fejlbeskeder beskriver nu, hvad du selv kan gøre, i stedet for at bede dig kontakte udvikleren. Løser det ikke problemet, vises et link, der opretter et GitHub-issue med fejlkode, teknisk tekst og version udfyldt. `developerContact` i `config.js` er erstattet af `issuesUrl`.
+
 ### Rettet (udseende)
 - Popup'ens højde følger nu indholdet i stedet for en fast mindstehøjde på 540 px, så der ikke er et ubrugt mellemrum i bunden. Lange visninger (fx indstillinger) ruller nu i stedet for at blive klippet ved Chromes grænse på 600 px.
 

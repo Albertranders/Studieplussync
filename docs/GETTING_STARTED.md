@@ -78,8 +78,8 @@ Indstillingerne gemmes automatisk. Automatisk synkronisering kræver, at browser
 1. Kontrollér, at Studie+-fanen er åben og logget ind.
 2. Åbn StudieSync-menuen, og vælg **Test Studie+ forbindelsen**.
 3. Genindlæs Studie+-fanen, hvis forbindelsen ikke virker.
-4. Notér fejlkoden og den tekniske tekst, hvis problemet fortsætter.
-5. Slå fejlkoden op i afsnittet [Fejlkoder i README](../README.md#fejlkoder).
+4. Følg den vejledning, der står under fejlkoden i popup'en. Du kan også slå koden op i afsnittet [Fejlkoder i README](../README.md#fejlkoder).
+5. Løser det ikke problemet, så tryk på **Opret issue på GitHub** under fejlen, og send issuet.
 
 Del aldrig adgangskoder, Google-tokens, cookies eller sessionsdata. Slør e-mailadresser og private skemaoplysninger på skærmbilleder.
 

@@ -36,10 +36,15 @@ function setStatus(status) {
     detail.textContent = status.detail || (status.ok ? "Forbindelsen fungerer." : "Kontrollér Studie+ og prøv igen.");
   }
   dot.className = "dot " + (status.ok ? "good" : "bad");
+  // Ved fejl: vis et link, der opretter et GitHub-issue med fejlkode og tekniske oplysninger udfyldt.
+  const link = $("issue-link");
+  link.hidden = status.ok || !status.issueUrl;
+  if (!link.hidden) link.href = status.issueUrl;
 }
 // Replace the current status with a temporary in-progress message.
 function setBusy(title, text) {
   state.textContent = title; detail.textContent = text; dot.className = "dot";
+  $("issue-link").hidden = true;
 }
 // Show one of the popup's top-level screens and hide the others.
 function showView(name) {
