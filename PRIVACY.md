@@ -1,12 +1,12 @@
 # Privatlivspolitik for StudieSync
 
-Sidst opdateret: 17. november 2026
+Sidst opdateret: 25. november 2026
 
 StudieSync er en browserudvidelse (Chrome, Opera, Edge m.fl.), der læser dit skema fra Studie+ og lægger det i en separat kalender ("Studie+ skema") i din Google Kalender.
 
 ## Hvad udvidelsen behandler
 
-- **Skemadata fra Studie+**: fag, tidspunkter, lokaler, lærere, lektier og noter. Dataene læses fra den Studie+-fane, du selv har åben og er logget ind i.
+- **Skemadata fra Studie+**: fag, tidspunkter, lokaler, lærere, lektier og noter. Udvidelsen læser også dine afleveringer (fag, titel og frist) for dem, du endnu ikke har afleveret. De vises kun i udvidelsen og sendes ikke til Google Kalender. Dataene læses fra den Studie+-fane, du selv har åben og er logget ind i.
 - **Adgang til Google Kalender**: via Googles login (OAuth) med scopet `calendar.app.created`. Det giver adgang til at oprette og ændre den kalender, udvidelsen selv har oprettet. Udvidelsen kan ikke se eller ændre dine øvrige kalendere eller events. Scopene `openid` og `email` bruges kun til at læse din e-mailadresse, så udvidelsen kan huske, hvilken Google-konto du loggede ind med, og du ikke skal logge ind igen og igen.
 - **Lokale indstillinger**: kalenderens id, din Google-e-mail (som login-tip), dine valg i Indstillinger (antal uger, automatisk synkronisering, tidszone, udseende og kalenderens navn) status for seneste synkronisering, synkroniseringshistorik, en lokal kopi af dit seneste skema (fag, tidspunkter og lokaler), så dagens lektioner vises med det samme, to tekniske værdier om Studie+'s version (ingen personlige data) og hvilke trin i introduktionsguiden du har gennemført. Dashboardet henter titel, tidspunkt og lokale på dagens lektioner fra din egen "Studie+ skema"-kalender og viser dem kun i popup'en. De gemmes i `chrome.storage.local` i din egen browser.
 

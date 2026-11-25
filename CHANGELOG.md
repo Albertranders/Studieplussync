@@ -17,7 +17,7 @@ Vigtige ændringer i StudieSync. Nyeste version står øverst.
 - Synkroniseringen skriver til Google Kalender tre events ad gangen (`writeConcurrency`) med kortere pause, springer et ekstra kalenderopslag over og fornyer Google-login, mens skemaet hentes fra Studie+.
 
 ### Tilføjet
-- Fane på forsiden, hvor man kan skifte mellem Skema og Afleveringer. Valget huskes. Afleveringsvisningen sorterer efter frist og markerer forfaldne afleveringer og afleveringer med frist i dag. Selve hentningen af afleveringer fra Studie+ er endnu ikke koblet på.
+- Fane på forsiden, hvor man kan skifte mellem Skema og Afleveringer. Valget huskes. Afleveringsvisningen sorterer efter frist og markerer forfaldne afleveringer og afleveringer med frist i dag. Fanen viser de afleveringer, du endnu ikke har afleveret (fag, titel og frist), hentet fra Studie+'s opgaveservice. De opdateres efter hver synkronisering og når fanen åbnes. Uafleverede opgaver med en frist, der er mere end 30 dage gammel, vises ikke. Ny fejlkode E407, hvis Studie+ ændrer formatet.
 - Synkronisering, når Studie+ åbnes: content-scriptet melder, at siden er indlæst, og udvidelsen synkroniserer efter 3 sekunder, hvis automatisk synkronisering er slået til, Google er forbundet, og den seneste synkronisering er over 5 minutter gammel. Er Studie+ ikke klar eller ikke logget ind, springes det over uden fejlmarkering.
 - Dashboard i popup'en med forbindelsesstatus, seneste synkronisering og versionsnummer.
 - Forsiden har to kolonner: til højre ligger overskriften og hele dagens skema (aktuel lektion fremhævet, overståede nedtonede, plads til 7 lektioner uden scroll). Til venstre ligger status, forbindelse, seneste synkronisering og knapper, med kortere tekster og mere luft.

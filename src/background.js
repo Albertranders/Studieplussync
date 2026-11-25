@@ -9,6 +9,7 @@ import { createSyncLock } from "./sync-lock.js";
 import { addPartialProgressToStatus, createSyncProgress } from "./sync-progress.js";
 import { runWithLimit } from "./concurrency.js";
 import { buildLessonsCache } from "./lessons-cache.js";
+import { buildAssignmentsCache } from "./assignments.js";
 import { isQuietFailure, shouldSyncOnOpen } from "./open-sync.js";
 
 // The configured web OAuth client must allow chrome.identity's redirect URL.
@@ -328,6 +329,29 @@ function sendTabMessage(tab, type, weeks) {
   });
 }
 
+// Afleveringer: hent de uafleverede opgaver fra Studie+-fanen og gem en lokal kopi til popup'en.
+// Kræver kun Studie+ (ikke Google). Er ingen Studie+-fane åben, beholdes den seneste kopi uden fejl.
+let assignmentsRefresh = null; // forhindrer to hentninger på samme tid
+function refreshAssignments() {
+  if (assignmentsRefresh) return assignmentsRefresh;
+  assignmentsRefresh = (async () => {
+    try {
+      const tab = await findStudyPlusTab();
+      if (!tab) return { ok: false, quiet: true };
+      const result = await sendTabMessage(tab, "STUDIESYNC_READ_ASSIGNMENTS");
+      await storageSet({ assignmentsCache: buildAssignmentsCache(result.assignments), assignmentsError: null });
+      return { ok: true };
+    } catch (error) {
+      const status = STUDIESYNC_ERRORS.toStatus(error);
+      await storageSet({ assignmentsError: { code: status.code, message: status.message, at: new Date().toISOString() } });
+      return { ok: false, code: status.code, message: status.message };
+    } finally {
+      assignmentsRefresh = null;
+    }
+  })();
+  return assignmentsRefresh;
+}
+
 // Beder content-scriptet læse skemaet for det valgte antal uger
 async function readSchedule(tab) {
   return sendTabMessage(tab, "STUDIESYNC_READ_SCHEDULE", await scheduleWeeks());
@@ -429,6 +453,7 @@ async function performSyncNow(interactive = false, trigger = "manual", quiet = f
     };
     // Gem en lokal kopi af skemaet, så popup'en kan vise dagens lektioner øjeblikkeligt.
     await storageSet({ lessonsCache: buildLessonsCache(lessons, (await getSettings()).timeZone) });
+    refreshAssignments().catch(() => {}); // afleveringer opdateres med; en fejl dér må ikke vælte kalendersynkroniseringen
     await recordSyncHistory(status, trigger);
     await sendStatus(status);
     return status;
@@ -532,6 +557,11 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message?.type === "STUDIESYNC_PAGE_READY") {
     syncWhenStudyPlusOpens().catch(() => {});
     return false;
+  }
+  // Opdatér afleveringerne (popup'en åbner fanen Afleveringer)
+  if (message?.type === "STUDIESYNC_REFRESH_ASSIGNMENTS") {
+    refreshAssignments().then(sendResponse);
+    return true;
   }
   // Hent seneste status til visning i popup'en
   if (message?.type === "STUDIESYNC_STATUS") {

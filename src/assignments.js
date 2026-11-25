@@ -4,13 +4,18 @@
 const MAX_ASSIGNMENTS = 300;
 
 // Gem kun det, fanen skal bruge. Ugyldige poster (uden id, titel eller gyldig frist) sorteres fra.
-export function buildAssignmentsCache(items, now = new Date()) {
+// Uafleverede opgaver med en frist, der er mere end `maxOverdueDays` dage gammel, droppes: Studie+ viser dem
+// heller ikke længere, og ellers ville gamle, aldrig afleverede opgaver stå i listen for evigt.
+export const MAX_OVERDUE_DAYS = 30;
+export function buildAssignmentsCache(items, now = new Date(), maxOverdueDays = MAX_OVERDUE_DAYS) {
   const seen = new Set();
   const assignments = [];
+  const oldest = now.getTime() - maxOverdueDays * 24 * 60 * 60 * 1000;
   for (const item of Array.isArray(items) ? items : []) {
     if (!item || item.id == null || !item.title) continue;
     const due = new Date(item.due);
     if (Number.isNaN(due.getTime())) continue;
+    if (item.submitted !== true && due.getTime() < oldest) continue;
     const id = String(item.id);
     if (seen.has(id)) continue;
     seen.add(id);

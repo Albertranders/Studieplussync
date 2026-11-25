@@ -54,3 +54,12 @@ test("ukendt fane falder tilbage til skema", () => {
   assert.equal(resolveTab("noget andet"), "schedule");
   assert.equal(resolveTab(undefined), "schedule");
 });
+
+test("uafleverede opgaver med en frist over 30 dage gammel droppes, men afleverede beholdes", () => {
+  const cache = buildAssignmentsCache([
+    item("gammel", 1, { due: new Date(2026, 9, 1, 12).toISOString() }),
+    item("nylig", 1, { due: new Date(2026, 10, 10, 12).toISOString() }),
+    item("afleveret", 1, { due: new Date(2026, 9, 1, 12).toISOString(), submitted: true })
+  ], now);
+  assert.deepEqual(cache.assignments.map(a => a.id), ["nylig", "afleveret"]);
+});

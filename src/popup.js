@@ -148,17 +148,19 @@ function formatDue(value, state) {
   return state === "today" ? `I dag kl. ${time}` : `${day} kl. ${time}`;
 }
 // Vis afleveringer. `cache` er den lokale kopi (eller undefined, hvis ingen findes endnu).
-function renderAssignments(cache, connected) {
-  const list = $("assignments-list"), empty = $("assignments-empty"), badge = $("tab-assignments-count");
+function renderAssignments(cache, error) {
+  const list = $("assignments-list"), empty = $("assignments-empty"), badge = $("tab-assignments-count"), note = $("assignments-note");
   list.replaceChildren();
-  const items = connected ? sortedAssignments(cache) : null;
-  const emptyText = !connected ? "Forbind Google Kalender for at komme i gang."
-    : !items ? "Afleveringer er ikke hentet endnu."
-    : !items.length ? "Ingen afleveringer. Godt gået!"
+  const items = sortedAssignments(cache);
+  const emptyText = !items ? "Afleveringer er ikke hentet endnu. Åbn Studie+ i en fane og log ind."
+    : !items.length ? "Du har ingen afleveringer, du mangler. Godt gået!"
     : "";
   empty.textContent = emptyText;
   empty.hidden = !emptyText;
-  const open = connected ? openCount(cache) : 0;
+  // Kunne afleveringerne ikke opdateres, vises fejlen under listen, og den seneste kopi står stadig.
+  note.textContent = error?.message ? `Kunne ikke opdatere: ${error.message}` : "";
+  note.hidden = !error?.message;
+  const open = openCount(cache);
   badge.hidden = open === 0;
   badge.textContent = String(open);
   badge.classList.toggle("alert", Boolean(items?.some(item => item.state === "overdue")));
@@ -195,6 +197,7 @@ function selectTab(tab, save = true) {
     $(`panel-${name}`).hidden = !active;
   }
   if (save) chrome.storage.local.set({ dashboardTab: tab });
+  if (tab === "assignments") refreshAssignmentsIfStale().catch(() => {});
 }
 for (const name of ["schedule", "assignments"]) {
   $(`tab-${name}`).addEventListener("click", () => selectTab(name));
@@ -208,15 +211,26 @@ $("tab-schedule").parentElement.addEventListener("keydown", event => {
 });
 // Opdatér afleveringerne straks, når en synkronisering gemmer en ny kopi.
 chrome.storage.onChanged.addListener((changes, area) => {
-  if (area === "local" && changes.assignmentsCache) {
-    chrome.storage.local.get(["googleConnected", "loginHint", "webToken"]).then(stored =>
-      renderAssignments(changes.assignmentsCache.newValue, isConnected(stored)));
+  if (area === "local" && (changes.assignmentsCache || changes.assignmentsError)) {
+    chrome.storage.local.get(["assignmentsCache", "assignmentsError"]).then(stored =>
+      renderAssignments(stored.assignmentsCache, stored.assignmentsError));
   }
 });
+// Hent friske afleveringer, når fanen åbnes, hvis kopien er over 10 minutter gammel (eller mangler).
+const ASSIGNMENTS_MAX_AGE_MS = 10 * 60 * 1000;
+let refreshingAssignments = false;
+async function refreshAssignmentsIfStale() {
+  if (refreshingAssignments) return;
+  const { assignmentsCache } = await chrome.storage.local.get(["assignmentsCache"]);
+  const age = Date.now() - Date.parse(assignmentsCache?.at);
+  if (age >= 0 && age < ASSIGNMENTS_MAX_AGE_MS) return;
+  refreshingAssignments = true;
+  try { await message("STUDIESYNC_REFRESH_ASSIGNMENTS"); } finally { refreshingAssignments = false; }
+}
 // Refresh sync metadata and today's schedule. Everything comes from the local storage, so it is instant.
 async function refreshDashboard(connected = true, stored) {
-  stored ??= await chrome.storage.local.get(["lastStatus", "lastUpdated", "lessonsCache", "assignmentsCache"]);
-  renderAssignments(stored.assignmentsCache, connected);
+  stored ??= await chrome.storage.local.get(["lastStatus", "lastUpdated", "lessonsCache", "assignmentsCache", "assignmentsError"]);
+  renderAssignments(stored.assignmentsCache, stored.assignmentsError);
   // Keep the disconnected message visible rather than replacing it with a stale status.
   if (connected && stored.lastStatus) setStatus(stored.lastStatus);
   if (stored.lastUpdated) {
@@ -562,7 +576,7 @@ $("back").addEventListener("click", async () => {
 const LOAD_KEYS = [
   "scheduleWeeks", "autoSync", "autoSyncMinutes", "calendarName", "timeZone", "theme",
   "googleConnected", "loginHint", "webToken", "lastStatus", "lastUpdated", "lessonsCache",
-  "assignmentsCache", "dashboardTab", "guideCompletedSteps", "guideCompleted", "guideAutoOpened"
+  "assignmentsCache", "assignmentsError", "dashboardTab", "guideCompletedSteps", "guideCompleted", "guideAutoOpened"
 ];
 async function load() {
   const stored = await chrome.storage.local.get(LOAD_KEYS);

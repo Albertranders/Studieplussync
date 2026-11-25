@@ -39,6 +39,7 @@
     E404: { text: "Skemaet indeholdt en ugyldig lektion.", fix: "Genindlæs Studie+-fanen, og prøv igen. Fejlen skyldes en lektion uden dato eller tid i skemaet. Skriv i dit issue, hvilken dag den ligger på." },
     E405: { text: "Studie+ svarede med en serverfejl.", fix: "Log ind på Studie+ igen, og prøv igen." },
     E406: { text: "Studie+ returnerede ingen lektioner for perioden.", fix: "Tjek, at du har lektioner i perioden, eller vælg flere uger i udvidelsen." },
+    E407: { text: "Afleveringerne havde et uventet format.", fix: "Studie+ er sandsynligvis opdateret. Genindlæs Studie+-fanen, og prøv igen." },
 
     // --- E5xx: Beskyttelse af kalenderen (kalenderen er ikke ændret) ---
     E501: { text: "Skemaet kunne ikke valideres. Kalenderen er ikke ændret.", fix: "Prøv igen. Genindlæs evt. Studie+-fanen først." },

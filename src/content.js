@@ -39,9 +39,17 @@
     return { lessons, dateRange, count: lessons.length, pageTitle: document.title };
   }
 
+  // Læs de afleveringer, der ikke er afleveret endnu (til fanen Afleveringer).
+  async function readAssignments() {
+    if (!window.StudySyncGwt) throw new StudySyncError("E303", "GWT-modulet blev ikke indlæst. Genindlæs Studie+ fanen.");
+    const { assignments } = await window.StudySyncGwt.fetchAssignments();
+    return { assignments };
+  }
+
   const handlers = {
     STUDIESYNC_TEST_CONNECTION: testConnection,
-    STUDIESYNC_READ_SCHEDULE: readSchedule
+    STUDIESYNC_READ_SCHEDULE: readSchedule,
+    STUDIESYNC_READ_ASSIGNMENTS: readAssignments
   };
 
   // Fortæl baggrundsscriptet, at Studie+ er åbnet, så skemaet kan synkroniseres, mens du bruger siden.

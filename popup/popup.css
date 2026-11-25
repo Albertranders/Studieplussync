@@ -285,3 +285,4 @@ body.wide { max-height: 600px; overflow-y: auto; }
 .today-item.today .assign-due { color: #b88600; font-weight: 650; }
 .today-item.done { opacity: .5; }
 .today-item.done .assign-title { text-decoration: line-through; }
+.assign-note { margin-top: 8px; color: var(--bad); }
