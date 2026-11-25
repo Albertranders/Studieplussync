@@ -3,6 +3,7 @@ import { INTERVAL_CHOICES, THEME_CHOICES, WEEK_CHOICES, autoSyncText, resolveSet
 import { canOpenGuide, shouldAutoOpenGuide } from "./onboarding.js";
 import { isConnected } from "./auth.js";
 import { todayLessons } from "./lessons-cache.js";
+import { openCount, resolveTab, sortedAssignments } from "./assignments.js";
 
 const CONFIG = globalThis.STUDIESYNC_CONFIG;
 const $ = id => document.getElementById(id);
@@ -136,9 +137,86 @@ function renderToday(lessons, connected) {
     list.append(row);
   }
 }
+// Frist som kort tekst: "Forfaldt 12. nov.", "I dag kl. 14.00" eller "27. nov. kl. 14.00".
+function formatDue(value, state) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const time = date.toLocaleTimeString("da-DK", { hour: "2-digit", minute: "2-digit" });
+  const day = date.toLocaleDateString("da-DK", { day: "numeric", month: "short" });
+  if (state === "overdue") return `Forfaldt ${day}`;
+  if (state === "done") return `Afleveret · ${day}`;
+  return state === "today" ? `I dag kl. ${time}` : `${day} kl. ${time}`;
+}
+// Vis afleveringer. `cache` er den lokale kopi (eller undefined, hvis ingen findes endnu).
+function renderAssignments(cache, connected) {
+  const list = $("assignments-list"), empty = $("assignments-empty"), badge = $("tab-assignments-count");
+  list.replaceChildren();
+  const items = connected ? sortedAssignments(cache) : null;
+  const emptyText = !connected ? "Forbind Google Kalender for at komme i gang."
+    : !items ? "Afleveringer er ikke hentet endnu."
+    : !items.length ? "Ingen afleveringer. Godt gået!"
+    : "";
+  empty.textContent = emptyText;
+  empty.hidden = !emptyText;
+  const open = connected ? openCount(cache) : 0;
+  badge.hidden = open === 0;
+  badge.textContent = String(open);
+  badge.classList.toggle("alert", Boolean(items?.some(item => item.state === "overdue")));
+  for (const item of emptyText ? [] : items) {
+    const row = document.createElement("li");
+    row.className = "today-item " + item.state;
+    const top = document.createElement("div");
+    top.className = "assign-top";
+    const subject = document.createElement("span");
+    subject.className = "assign-subject";
+    subject.textContent = item.subject;
+    const due = document.createElement("time");
+    due.className = "assign-due";
+    due.dateTime = item.due;
+    due.textContent = formatDue(item.due, item.state);
+    top.append(subject, due);
+    const title = document.createElement("strong");
+    title.className = "assign-title";
+    title.textContent = item.title;
+    title.title = item.title; // fuld titel ved hover, hvis den er afkortet
+    row.append(top, title);
+    list.append(row);
+  }
+}
+// Skift mellem fanerne Skema og Afleveringer. Valget huskes til næste gang popup'en åbnes.
+function selectTab(tab, save = true) {
+  tab = resolveTab(tab);
+  for (const name of ["schedule", "assignments"]) {
+    const active = name === tab;
+    const button = $(`tab-${name}`);
+    button.classList.toggle("active", active);
+    button.setAttribute("aria-selected", String(active));
+    button.tabIndex = active ? 0 : -1;
+    $(`panel-${name}`).hidden = !active;
+  }
+  if (save) chrome.storage.local.set({ dashboardTab: tab });
+}
+for (const name of ["schedule", "assignments"]) {
+  $(`tab-${name}`).addEventListener("click", () => selectTab(name));
+}
+// Piletaster flytter mellem fanerne, som man forventer af et faneskifte.
+$("tab-schedule").parentElement.addEventListener("keydown", event => {
+  if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+  const next = event.key === "ArrowRight" ? "assignments" : "schedule";
+  selectTab(next);
+  $(`tab-${next}`).focus();
+});
+// Opdatér afleveringerne straks, når en synkronisering gemmer en ny kopi.
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === "local" && changes.assignmentsCache) {
+    chrome.storage.local.get(["googleConnected", "loginHint", "webToken"]).then(stored =>
+      renderAssignments(changes.assignmentsCache.newValue, isConnected(stored)));
+  }
+});
 // Refresh sync metadata and today's schedule. Everything comes from the local storage, so it is instant.
 async function refreshDashboard(connected = true, stored) {
-  stored ??= await chrome.storage.local.get(["lastStatus", "lastUpdated", "lessonsCache"]);
+  stored ??= await chrome.storage.local.get(["lastStatus", "lastUpdated", "lessonsCache", "assignmentsCache"]);
+  renderAssignments(stored.assignmentsCache, connected);
   // Keep the disconnected message visible rather than replacing it with a stale status.
   if (connected && stored.lastStatus) setStatus(stored.lastStatus);
   if (stored.lastUpdated) {
@@ -484,13 +562,14 @@ $("back").addEventListener("click", async () => {
 const LOAD_KEYS = [
   "scheduleWeeks", "autoSync", "autoSyncMinutes", "calendarName", "timeZone", "theme",
   "googleConnected", "loginHint", "webToken", "lastStatus", "lastUpdated", "lessonsCache",
-  "guideCompletedSteps", "guideCompleted", "guideAutoOpened"
+  "assignmentsCache", "dashboardTab", "guideCompletedSteps", "guideCompleted", "guideAutoOpened"
 ];
 async function load() {
   const stored = await chrome.storage.local.get(LOAD_KEYS);
   const settings = resolveSettings(stored, CONFIG);
   applyTheme(settings.theme);
   showSettings(settings);
+  selectTab(stored.dashboardTab, false);
   const manifest = chrome.runtime.getManifest();
   $("version").textContent = `v${manifest.version}`;
   const connected = await refreshAuth(stored);

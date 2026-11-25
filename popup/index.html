@@ -40,12 +40,22 @@
   <p class="foot credit">Udviklet af Albert Randers Jende</p>
   </div>
   <div class="col-right">
-  <div class="dashboard-heading"><div><p class="eyebrow">OVERSIGT</p><h2>Dit skema</h2></div><span id="version" class="version"></span></div>
-  <aside class="col-today" aria-label="Dagens skema">
+  <div class="dashboard-heading"><div><p class="eyebrow">OVERSIGT</p><h2>Dit overblik</h2></div><span id="version" class="version"></span></div>
+  <div class="tabs" role="tablist" aria-label="Vælg visning">
+    <button id="tab-schedule" class="tab active" role="tab" aria-selected="true" aria-controls="panel-schedule">Skema</button>
+    <button id="tab-assignments" class="tab" role="tab" aria-selected="false" aria-controls="panel-assignments" tabindex="-1">Afleveringer<span id="tab-assignments-count" class="tab-count" hidden></span></button>
+  </div>
+  <aside id="panel-schedule" class="col-today" role="tabpanel" aria-labelledby="tab-schedule">
     <p class="eyebrow">I DAG</p>
     <h2 id="today-title" class="today-title"></h2>
     <ol id="today-list" class="today-list"></ol>
     <p id="today-empty" class="today-empty" hidden></p>
+  </aside>
+  <aside id="panel-assignments" class="col-today" role="tabpanel" aria-labelledby="tab-assignments" hidden>
+    <p class="eyebrow">AFLEVERINGER</p>
+    <h2 id="assignments-title" class="today-title">Dine afleveringer</h2>
+    <ol id="assignments-list" class="today-list"></ol>
+    <p id="assignments-empty" class="today-empty" hidden></p>
   </aside>
   </div>
   </div>
