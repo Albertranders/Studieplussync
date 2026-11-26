@@ -5,7 +5,8 @@ const title=document.querySelector("#issue-title"), details=document.querySelect
 if(params.has("title"))title.value=params.get("title");
 if(params.has("details"))details.value=params.get("details");
 if(params.has("code"))code.value=params.get("code");
-document.querySelector("#issue-browser").value=navigator.userAgent;
+const browserField=document.querySelector("#issue-browser");
+browserField.value=params.get("browser") || navigator.userAgent;
 document.querySelector("#issue-form").addEventListener("submit",async e=>{
  e.preventDefault();const form=e.currentTarget,button=document.querySelector("#issue-submit"),result=document.querySelector("#issue-result");
  button.disabled=true;result.textContent="Sender fejlrapport…";result.className="form-result";
