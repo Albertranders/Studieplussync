@@ -18,9 +18,9 @@ test("status beskriver løsningen, nævner GitHub-issues og indeholder fejlkode 
 test("ingen fejlkode beder brugeren kontakte udvikleren",()=>{for(const [code,{fix}] of Object.entries(CODES))assert.doesNotMatch(fix,/kontakt udvikleren/i,code);});
 test("issue-linket peger på repoets issues og har fejlkode, tekst og version udfyldt",()=>{
   const url=new URL(toStatus(new globalThis.StudySyncError("E306","HTTP 401")).issueUrl);
-  assert.equal(url.origin+url.pathname,"https://github.com/Albertranders/Studieplussync/issues/new");
+  assert.equal(url.origin+url.pathname,"https://studieplussync-site.pages.dev/support.html");
   assert.match(url.searchParams.get("title"),/^Fejl E306: /);
-  const body=url.searchParams.get("body");
+  const body=url.searchParams.get("details");
   assert.match(body,/\*\*Fejlkode:\*\* E306/);assert.match(body,/HTTP 401/);assert.match(body,/StudieSync-version/);
 });
 test("fejl uden kode bliver E999, netværksfejl bliver E901",()=>{assert.equal(describe(new Error("noget andet")).code,"E999");assert.equal(describe(new TypeError("Failed to fetch")).code,"E901");assert.equal(describe(new Error("[E777] findes ikke")).code,"E999");});
