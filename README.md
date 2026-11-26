@@ -104,6 +104,8 @@ Udvidelsen virker på både `all.uddataplus.dk` og `all.studieplus.dk`. Skifter 
 
 ## Sådan virker det
 
+Forsiden har to faner: **Skema** (dagens lektioner) og **Afleveringer** (de opgaver, du endnu ikke har afleveret, sorteret efter frist). Afleveringerne hentes fra Studie+'s opgaveservice (`src/assignments-parse.js`), kræver kun en åben Studie+-fane og lægges ikke i Google Kalender.
+
 Udvidelsen bruger dit eksisterende login i Studie+. Den beder ikke om adgangskode eller MitID og sender ikke cookies til en ekstern server. Skemaet hentes fra Studie+'s egne serverkald, mens du er logget ind i en åben fane, og lægges i en separat Google Kalender. Du kan bruge **Test Studie+ forbindelsen** i menuen for at tjekke, at udvidelsen kan læse skemaet.
 
 Studie+ har ikke et officielt API, så hentningen bygger på uofficielle serverkald, som Studie+ kan ændre. Hvis skemaet ikke kan læses sikkert, stopper synkroniseringen uden at ændre kalenderen.
