@@ -21,7 +21,7 @@ test("issue-linket peger på repoets issues og har fejlkode, tekst og version ud
   assert.equal(url.origin+url.pathname,"https://studieplussync-site.pages.dev/support.html");
   assert.match(url.searchParams.get("title"),/^Fejl E306: /);
   const body=url.searchParams.get("details");
-  assert.match(body,/\*\*Fejlkode:\*\* E306/);assert.match(body,/HTTP 401/);assert.match(body,/StudieSync-version/);
+  assert.match(body,/Fejlkode: E306/);assert.match(body,/HTTP 401/);assert.match(body,/StudieSync-version/);assert.match(body,/Browser:/);assert.match(body,/User-Agent:/);assert.ok(url.searchParams.has("browser"));
 });
 test("fejl uden kode bliver E999, netværksfejl bliver E901",()=>{assert.equal(describe(new Error("noget andet")).code,"E999");assert.equal(describe(new TypeError("Failed to fetch")).code,"E901");assert.equal(describe(new Error("[E777] findes ikke")).code,"E999");});
 test("alle koder står i README-tabellen",()=>{const readme=readFileSync(new URL("../README.md",import.meta.url),"utf8");const inTable=[...readme.matchAll(/^\| (E\d{3}) \|/gm)].map(m=>m[1]);assert.deepEqual(inTable.sort(),Object.keys(CODES).sort());});
