@@ -6,7 +6,8 @@
   // Use the active page origin so requests and session cookies target the correct domain.
   const BASE = location.origin;
   const MODULE = globalThis.STUDIESYNC_CONFIG.studiePlusModule;                      // navnet på skema-modulet
-  let discoveryPromise;                        // cache, så vi kun slår versionen op én gang pr. fane
+  const discoveryPromises = new Map();         // modul -> løfte, så vi kun slår versionen op én gang pr. modul og fane
+  const OPGAVE_MODULE = "opgave";               // modulet med afleveringer (opgaveservice)
 
   // Permutation og service-hash gemmes også i browserens lager, så de to store filer fra Studie+
   // ikke hentes igen ved hver genindlæsning af fanen. De ændrer sig kun, når Studie+ opdateres,
@@ -16,9 +17,10 @@
   const HEX32 = /^[A-F0-9]{32}$/;
 
   // Læser en gemt, gyldig opdagelse for denne adresse. Alt uventet behandles som "ingen cache".
-  async function readStoredDiscovery(moduleBase) {
+  const discoveryKey = module => module === MODULE ? DISCOVERY_KEY : `${DISCOVERY_KEY}:${module}`;
+  async function readStoredDiscovery(moduleBase, module) {
     try {
-      const saved = (await chrome.storage.local.get(DISCOVERY_KEY))[DISCOVERY_KEY];
+      const saved = (await chrome.storage.local.get(discoveryKey(module)))[discoveryKey(module)];
       if (!saved || saved.moduleBase !== moduleBase) return null;
       if (!HEX32.test(saved.permutation) || !HEX32.test(saved.serviceHash)) return null;
       const age = Date.now() - Number(saved.at);
@@ -28,23 +30,24 @@
       return null;
     }
   }
-  function storeDiscovery(value) {
-    try { chrome.storage.local.set({ [DISCOVERY_KEY]: { ...value, at: Date.now() } }).catch(() => {}); } catch { /* valgfri optimering */ }
+  function storeDiscovery(value, module) {
+    try { chrome.storage.local.set({ [discoveryKey(module)]: { ...value, at: Date.now() } }).catch(() => {}); } catch { /* valgfri optimering */ }
   }
-  async function forgetDiscovery() {
-    try { await chrome.storage.local.remove(DISCOVERY_KEY); } catch { /* valgfri optimering */ }
+  async function forgetDiscovery(module) {
+    try { await chrome.storage.local.remove(discoveryKey(module)); } catch { /* valgfri optimering */ }
   }
 
   // Finder de værdier, serveren kræver: GWT-"permutation" (version af klientkoden)
   // og skemaservicens hash. Begge står i Studie+'s egne JavaScript-filer og skifter ved opdateringer.
-  function discover() {
-    if (discoveryPromise) return discoveryPromise;
-    discoveryPromise = (async () => {
-      const moduleBase = `${BASE}/${MODULE}/${MODULE}/`;
-      const stored = await readStoredDiscovery(moduleBase);
+  // `module` er Studie+-modulet (skema eller opgave) og `service` navnet på dets service i klientkoden.
+  function discover(module = MODULE, service = "skemaservice") {
+    if (discoveryPromises.has(module)) return discoveryPromises.get(module);
+    const promise = (async () => {
+      const moduleBase = `${BASE}/${module}/${module}/`;
+      const stored = await readStoredDiscovery(moduleBase, module);
       if (stored) return stored;
       // Trin 1: hent modulets "loader"-fil
-      const loader = await fetch(`${moduleBase}${MODULE}.nocache.js`, {
+      const loader = await fetch(`${moduleBase}${module}.nocache.js`, {
         credentials: "include",
         cache: "no-store"
       });
@@ -66,16 +69,17 @@
         [...cacheText.matchAll(/,'(\w+service)','([A-F0-9]{32})'/g)]
           .map(match => [match[1], match[2]])
       );
-      if (!hashes.skemaservice) throw new StudySyncError("E305", "Studie+ skemaservice blev ikke fundet.");
-      const value = { moduleBase, permutation, serviceHash: hashes.skemaservice };
-      storeDiscovery(value);
+      if (!hashes[service]) throw new StudySyncError("E305", `Studie+ ${service} blev ikke fundet.`);
+      const value = { moduleBase, permutation, serviceHash: hashes[service] };
+      storeDiscovery(value, module);
       return value;
     // Ved fejl nulstilles cachen, så næste kald prøver forfra
     })().catch(error => {
-      discoveryPromise = null;
+      discoveryPromises.delete(module);
       throw error;
     });
-    return discoveryPromise;
+    discoveryPromises.set(module, promise);
+    return promise;
   }
 
   // Omsætter "ÅÅÅÅ-MM-DD" til GWT's datoformat (år regnes fra 1900, måned fra 0)
@@ -281,7 +285,7 @@
 
   // Henter skemaet for en periode ("ÅÅÅÅ-MM-DD" til "ÅÅÅÅ-MM-DD") og returnerer lektionerne
   async function fetchScheduleOnce(startDate, endDate) {
-    const config = await discover();
+    const config = await discover(MODULE, "skemaservice");
     // Selve RPC-kaldet: serverens adresse, servicens hash, metoden "hentEgnePersSkemaData"
     // og start- og slutdato, alt adskilt af |
     const payload =
@@ -355,12 +359,60 @@
       return await fetchScheduleOnce(startDate, endDate);
     } catch (error) {
       if (!STALE_CODES.has(error?.code)) throw error;
-      discoveryPromise = null;
-      await forgetDiscovery(); // glem også den gemte kopi, så der slås frisk op
+      discoveryPromises.delete(MODULE);
+      await forgetDiscovery(MODULE); // glem også den gemte kopi, så der slås frisk op
       return await fetchScheduleOnce(startDate, endDate);
     }
   }
 
-  // Gør funktionen tilgængelig for content.js
-  window.StudySyncGwt = { fetchSchedule };
+  // Afleveringer: kaldet getAlleAfleveringer har ingen parametre. Svaret læses af assignments-parse.js
+  // og indeholder kun de afleveringer, der endnu ikke er afleveret.
+  async function fetchAssignmentsOnce() {
+    const config = await discover(OPGAVE_MODULE, "opgaveservice");
+    const payload = "7|0|4|" + config.moduleBase + "|" + config.serviceHash +
+      "|dk.uddata.services.interfaces.OpgaveService|getAlleAfleveringer|1|2|3|4|0|";
+    // Adressen er set i Studie+ som /opgave/opgaveservice. Findes den ikke, prøves modulets egen sti.
+    const urls = [`${BASE}/${OPGAVE_MODULE}/opgaveservice`, `${BASE}/${OPGAVE_MODULE}/${OPGAVE_MODULE}/opgaveservice`];
+    let response;
+    for (const url of urls) {
+      response = await fetch(url, {
+        method: "POST",
+        credentials: "include",
+        cache: "no-store",
+        headers: {
+          "Content-Type": "text/x-gwt-rpc; charset=UTF-8",
+          "X-GWT-Permutation": config.permutation,
+          "X-GWT-Module-Base": config.moduleBase,
+          "modulename": OPGAVE_MODULE
+        },
+        body: payload
+      });
+      if (response.status !== 404) break;
+    }
+    const body = await response.text();
+    if (!response.ok) throw new StudySyncError(response.status === 401 || response.status === 403 ? "E306" : "E307", `Studie+ opgavekald HTTP ${response.status}`);
+    if (body.startsWith("//EX")) throw new StudySyncError("E405", "Studie+ GWT-fejl i opgavekaldet: " + body.slice(4, 184).replace(/[\r\n\t]+/g, " "));
+    if (!body.startsWith("//OK")) throw new StudySyncError("E401", "Studie+ returnerede ikke et gyldigt opgavesvar.");
+    const decoded = decodePayload(body);
+    if (!Array.isArray(decoded) || decoded.length < 3 || !Array.isArray(decoded.at(-3))) {
+      throw new StudySyncError("E401", "Studie+ opgavesvaret havde et ukendt format.");
+    }
+    const parser = globalThis.StudySyncAssignmentsParser;
+    if (!parser) throw new StudySyncError("E303", "Afleveringslæseren blev ikke indlæst. Genindlæs Studie+ fanen.");
+    return { ok: true, assignments: parser.parseAssignments(decoded) };
+  }
+  // Samme genforsøg som for skemaet, hvis Studie+ er opdateret, mens fanen har været åben.
+  async function fetchAssignments() {
+    try {
+      return await fetchAssignmentsOnce();
+    } catch (error) {
+      if (!STALE_CODES.has(error?.code)) throw error;
+      discoveryPromises.delete(OPGAVE_MODULE);
+      await forgetDiscovery(OPGAVE_MODULE);
+      return await fetchAssignmentsOnce();
+    }
+  }
+
+  // Gør funktionerne tilgængelige for content.js
+  window.StudySyncGwt = { fetchSchedule, fetchAssignments };
 })();

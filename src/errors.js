@@ -1,7 +1,7 @@
 // ============================================================================
 // Central error catalog. Codes are displayed in the popup and documented in
 // README.md; a test checks that the two lists stay synchronized.
-// E1xx: Google sign-in; E2xx: Google Calendar; E3xx: Studie+ connection;
+// E1xx: Google sign-in; E2xx: Google Calendar and Google Tasks; E3xx: Studie+ connection;
 // E4xx: schedule parsing; E5xx: calendar protection; E9xx: other errors.
 // `text` is shown in the popup; `fix` describes user troubleshooting steps.
 // ============================================================================
@@ -22,6 +22,8 @@
     E204: { text: "Google begrænsede antallet af kald.", fix: "Vent et par minutter, og synkronisér igen." },
     E205: { text: "Google Kalender har en serverfejl.", fix: "Vent lidt, og prøv igen." },
     E206: { text: "Uventet fejl fra Google Kalender.", fix: "Prøv igen om lidt." },
+    E207: { text: "Google Tasks har ikke fået tilladelse.", fix: "Slå \"Læg afleveringer i Google Tasks\" fra og til igen i Indstillinger, og giv de tilladelser, der bliver bedt om." },
+    E208: { text: "Google Tasks er ikke slået til i udviklerens Google-projekt.", fix: "Google Tasks API skal slås til i Google Cloud Console (se README). Prøv igen bagefter." },
 
     // --- E3xx: Forbindelse til Studie+ ---
     E301: { text: "Ingen åben Studie+-fane. Åbn Studie+ og log ind.", fix: "Åbn Studie+ (all.studieplus.dk eller all.uddataplus.dk), log ind, og prøv igen." },
@@ -39,6 +41,7 @@
     E404: { text: "Skemaet indeholdt en ugyldig lektion.", fix: "Genindlæs Studie+-fanen, og prøv igen. Fejlen skyldes en lektion uden dato eller tid i skemaet. Skriv i dit issue, hvilken dag den ligger på." },
     E405: { text: "Studie+ svarede med en serverfejl.", fix: "Log ind på Studie+ igen, og prøv igen." },
     E406: { text: "Studie+ returnerede ingen lektioner for perioden.", fix: "Tjek, at du har lektioner i perioden, eller vælg flere uger i udvidelsen." },
+    E407: { text: "Afleveringerne havde et uventet format.", fix: "Studie+ er sandsynligvis opdateret. Genindlæs Studie+-fanen, og prøv igen." },
 
     // --- E5xx: Beskyttelse af kalenderen (kalenderen er ikke ændret) ---
     E501: { text: "Skemaet kunne ikke valideres. Kalenderen er ikke ændret.", fix: "Prøv igen. Genindlæs evt. Studie+-fanen først." },

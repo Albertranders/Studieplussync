@@ -62,6 +62,7 @@ export function resolveSettings(stored = {}, defaults = {}) {
   return {
     scheduleWeeks: weeks >= 1 ? Math.min(maxWeeks, weeks) : defaultWeeks,
     autoSync: stored.autoSync !== false,
+    tasksSync: stored.tasksSync === true, // slået fra som standard; kræver ekstra Google-tilladelse
     autoSyncMinutes: minutes >= 1 ? minutes : defaultMinutes,
     timeZone,
     theme: THEME_CHOICES.some(([id]) => id === stored.theme) ? stored.theme : "auto",

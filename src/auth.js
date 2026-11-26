@@ -7,6 +7,8 @@ export const AUTH_ENDPOINT = "https://accounts.google.com/o/oauth2/v2/auth";
 export const SCOPE = "https://www.googleapis.com/auth/calendar.app.created";
 // OpenID scopes identify the account used for future silent token refreshes.
 export const SCOPES = ["openid", "email", SCOPE];
+// Google har ikke et smallere scope til Tasks. Det bedes derfor kun om, når brugeren slår Google Tasks til.
+export const TASKS_SCOPE = "https://www.googleapis.com/auth/tasks";
 export const USERINFO_URL = "https://www.googleapis.com/oauth2/v3/userinfo";
 // Revoke the current account's grant when the user explicitly signs out.
 export const REVOKE_URL = "https://oauth2.googleapis.com/revoke";
@@ -14,12 +16,12 @@ export const REVOKE_URL = "https://oauth2.googleapis.com/revoke";
 // Build Google's authorization URL, including account-selection hints when requested.
 // `loginHint` keeps silent refreshes tied to the previously connected account.
 // `selectAccount` forces the account chooser for connect and switch-account actions.
-export function buildAuthUrl({ clientId, redirectUri, state, interactive = true, loginHint = "", selectAccount = false }) {
+export function buildAuthUrl({ clientId, redirectUri, state, interactive = true, loginHint = "", selectAccount = false, tasks = false }) {
   const params = new URLSearchParams({
     client_id: clientId,
     response_type: "token",
     redirect_uri: redirectUri,
-    scope: SCOPES.join(" "),
+    scope: (tasks ? [...SCOPES, TASKS_SCOPE] : SCOPES).join(" "),
     state,
     include_granted_scopes: "true"
   });

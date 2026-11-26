@@ -104,6 +104,8 @@ Udvidelsen virker på både `all.uddataplus.dk` og `all.studieplus.dk`. Skifter 
 
 ## Sådan virker det
 
+Forsiden har to faner: **Skema** (dagens lektioner) og **Afleveringer** (de opgaver, du endnu ikke har afleveret, sorteret efter frist). Afleveringerne hentes fra Studie+'s opgaveservice (`src/assignments-parse.js`), kræver kun en åben Studie+-fane og lægges ikke i Google Kalender.
+
 Udvidelsen bruger dit eksisterende login i Studie+. Den beder ikke om adgangskode eller MitID og sender ikke cookies til en ekstern server. Skemaet hentes fra Studie+'s egne serverkald, mens du er logget ind i en åben fane, og lægges i en separat Google Kalender. Du kan bruge **Test Studie+ forbindelsen** i menuen for at tjekke, at udvidelsen kan læse skemaet.
 
 Studie+ har ikke et officielt API, så hentningen bygger på uofficielle serverkald, som Studie+ kan ændre. Hvis skemaet ikke kan læses sikkert, stopper synkroniseringen uden at ændre kalenderen.
@@ -134,6 +136,8 @@ Når noget går galt, viser udvidelsen en fejlkode, fx **Fejl E301**, og hvad du
 | E204 | Google begrænsede antallet af kald. | Vent et par minutter, og synkronisér igen. |
 | E205 | Google Kalender har en serverfejl. | Vent lidt, og prøv igen. |
 | E206 | Uventet fejl fra Google Kalender. | Prøv igen om lidt. |
+| E207 | Google Tasks har ikke fået tilladelse. | Slå "Læg afleveringer i Google Tasks" fra og til igen i Indstillinger, og giv de tilladelser, der bliver bedt om. |
+| E208 | Google Tasks er ikke slået til i udviklerens Google-projekt. | Google Tasks API skal slås til i Google Cloud Console (se README). Prøv igen bagefter. |
 
 **Forbindelse til Studie+**
 
@@ -157,6 +161,7 @@ Når noget går galt, viser udvidelsen en fejlkode, fx **Fejl E301**, og hvad du
 | E404 | Skemaet indeholdt en ugyldig lektion. | Genindlæs Studie+-fanen, og prøv igen. Fejlen skyldes en lektion uden dato eller tid i skemaet. Skriv i dit issue, hvilken dag den ligger på. |
 | E405 | Studie+ svarede med en serverfejl. | Log ind på Studie+ igen, og prøv igen. |
 | E406 | Studie+ returnerede ingen lektioner for perioden. | Tjek, at du har lektioner i perioden, eller vælg flere uger i udvidelsen. |
+| E407 | Afleveringerne havde et uventet format. | Studie+ er sandsynligvis opdateret. Genindlæs Studie+-fanen, og prøv igen. Kommer fejlen igen, så kontakt udvikleren. |
 
 **Beskyttelse af kalenderen**
 
@@ -173,6 +178,21 @@ Når noget går galt, viser udvidelsen en fejlkode, fx **Fejl E301**, og hvad du
 | E999 | Ukendt fejl. | Genindlæs Studie+-fanen, og prøv igen. |
 
 Kalenderen bliver aldrig ændret, når en fejl i E3xx, E4xx eller E5xx stopper en synkronisering.
+
+## Google Tasks (valgfrit)
+
+Under **Indstillinger → Google Tasks** kan du lægge de afleveringer, du mangler, i Google Tasks. Det er slået fra som standard.
+
+- Udvidelsen opretter listen **Studie+ afleveringer** og lægger én opgave pr. aflevering med fag, titel og fristens dato. Klokkeslættet står i opgavens noter, fordi Google Tasks kun gemmer datoen.
+- Opgaverne opdateres, når fristen flyttes, og **afsluttes** (slettes ikke), når afleveringen ikke længere mangler.
+- En opgave, du selv har afsluttet, bliver ikke genåbnet, og en opgave, du selv har slettet, bliver ikke oprettet igen. Dine andre lister og opgaver bliver aldrig rørt.
+- Slår du det fra, bliver de opgaver, der allerede er oprettet, liggende.
+- Første gang bedes der om en ekstra Google-tilladelse. Google har ikke et smallere scope til Tasks end `tasks`, som giver adgang til alle dine opgaver. Udvidelsen bruger kun sin egen liste.
+
+**Opsætning i Google Cloud Console** (kun hvis du bruger dit eget Google-projekt, se `googleClientId` i `src/config.js`):
+1. Gå til **APIs og tjenester → Bibliotek**, søg efter **Google Tasks API**, og tryk **Aktivér**. Uden det giver Google fejlen E208.
+2. Gå til **Google Auth Platform → Dataadgang** (tidligere *OAuth-samtykkeskærm → Scopes*), tilføj scopet `https://www.googleapis.com/auth/tasks`, og gem.
+3. Står appen i *Testing*, skal hver bruger stå som testbruger. Er den udgivet, skal Google godkende scopet, fordi det er et følsomt scope.
 
 ## Google-adgang og privatliv
 
