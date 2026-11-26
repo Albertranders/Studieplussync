@@ -71,23 +71,50 @@
     return { code, text: CODES[code].text, technical };
   }
 
-  // Fejlrapporten udfyldes på hjemmesiden og sendes server-side til GitHub.
+  // Fejlrapporten åbnes direkte på hjemmesiden med tekniske oplysninger udfyldt.
   const DEFAULT_WEBSITE_URL = "https://studieplussync-site.pages.dev";
+  function browserInfo() {
+    const ua = globalThis.navigator?.userAgent || "";
+    const brands = globalThis.navigator?.userAgentData?.brands || [];
+    const brand = brands.find(item => !/not.?a.?brand/i.test(item.brand));
+    let name = brand?.brand || "Ukendt browser";
+    let version = brand?.version || "";
+    const matchers = [
+      ["Microsoft Edge", /EdgA?\/(\d+(?:\.\d+){0,3})/],
+      ["Opera", /OPR\/(\d+(?:\.\d+){0,3})/],
+      ["Samsung Internet", /SamsungBrowser\/(\d+(?:\.\d+){0,3})/],
+      ["Firefox", /Firefox\/(\d+(?:\.\d+){0,3})/],
+      ["Chrome", /(?:Chrome|CriOS)\/(\d+(?:\.\d+){0,3})/],
+      ["Safari", /Version\/(\d+(?:\.\d+){0,3}).*Safari/]
+    ];
+    for (const [browser, pattern] of matchers) {
+      const found = ua.match(pattern);
+      if (found) { name = browser; version = found[1]; break; }
+    }
+    return { name, version, userAgent: ua || "Ukendt" };
+  }
   function issueUrl(code, text, technical) {
     const base = globalThis.STUDIESYNC_CONFIG?.websiteUrl || DEFAULT_WEBSITE_URL;
     const version = globalThis.chrome?.runtime?.getManifest?.()?.version || "ukendt";
-    const browser = globalThis.navigator?.userAgent || "ukendt";
+    const browser = browserInfo();
     const details = [
       `Fejlkode: ${code}`,
       `Fejltekst: ${text}`,
       technical && technical !== text ? `Teknisk tekst: ${technical}` : "",
       `StudieSync-version: ${version}`,
-      `Browser: ${browser}`
+      `Browser: ${browser.name} ${browser.version}`.trim(),
+      `User-Agent: ${browser.userAgent}`,
+      `Platform: ${globalThis.navigator?.platform || "Ukendt"}`,
+      `Sprog: ${globalThis.navigator?.language || "Ukendt"}`,
+      `Tidszone: ${Intl.DateTimeFormat().resolvedOptions().timeZone || "Ukendt"}`,
+      `Tidspunkt: ${new Date().toISOString()}`,
+      globalThis.location?.href ? `Side: ${globalThis.location.origin}${globalThis.location.pathname}` : ""
     ].filter(Boolean).join("\n");
     const url = new URL("/support.html", base);
     url.searchParams.set("title", `Fejl ${code}: ${text}`);
     url.searchParams.set("details", details);
     url.searchParams.set("code", code);
+    url.searchParams.set("browser", `${browser.name} ${browser.version} (${browser.userAgent})`.trim());
     return url.toString();
   }
 
