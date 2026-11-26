@@ -205,6 +205,25 @@ function renderTasksStatus(on, status) {
     element.classList.toggle("bad", bad);
   }
 }
+// Status for kalenderpåmindelser: i fanen Afleveringer og under indstillingen.
+function renderRemindersStatus(on, status) {
+  let text = "", bad = false;
+  if (on && !status) text = "Kalenderpåmindelser: oprettes, når afleveringerne er hentet.";
+  else if (on && status.ok === false) { text = `Kalenderpåmindelser: ${status.message || "Kunne ikke opdatere."}`; bad = true; }
+  else if (on) {
+    const c = status.counts || {};
+    const parts = [[c.created, "nye"], [c.updated, "ændrede"], [c.deleted, "slettede"]].filter(([n]) => n > 0).map(([n, label]) => `${n} ${label}`);
+    text = `Kalenderpåmindelser: ${parts.length ? parts.join(", ") : "ingen ændringer"}.`;
+  }
+  for (const id of ["reminders-note", "reminders-status"]) {
+    const element = $(id);
+    element.textContent = text;
+    element.hidden = !text;
+    element.classList.toggle("bad", bad);
+  }
+}
+// "Skjul kalenderen" giver kun mening, når påmindelserne er slået til.
+$("assignmentReminders").addEventListener("change", () => { $("hideReminderCalendar").disabled = !$("assignmentReminders").checked; });
 // Slå Google Tasks til eller fra. Til: Google beder om det ekstra scope (et vindue åbner, og popup'en kan lukke sig;
 // baggrundsscriptet gennemfører og gemmer resultatet, så popup'en viser det, næste gang den åbnes).
 $("tasksSync").addEventListener("change", async () => {
@@ -264,6 +283,9 @@ $("tab-schedule").parentElement.addEventListener("keydown", event => {
 });
 // Opdatér afleveringerne straks, når en synkronisering gemmer en ny kopi.
 chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === "local" && changes.remindersStatus) {
+    chrome.storage.local.get(["assignmentReminders"]).then(stored => renderRemindersStatus(stored.assignmentReminders === true, changes.remindersStatus.newValue));
+  }
   if (area === "local" && changes.tasksStatus) {
     chrome.storage.local.get(["tasksSync"]).then(stored => renderTasksStatus(stored.tasksSync === true, changes.tasksStatus.newValue));
   }
@@ -285,9 +307,10 @@ async function refreshAssignmentsIfStale() {
 }
 // Refresh sync metadata and today's schedule. Everything comes from the local storage, so it is instant.
 async function refreshDashboard(connected = true, stored) {
-  stored ??= await chrome.storage.local.get(["lastStatus", "lastUpdated", "lessonsCache", "assignmentsCache", "assignmentsError", "tasksSync", "tasksStatus"]);
+  stored ??= await chrome.storage.local.get(["lastStatus", "lastUpdated", "lessonsCache", "assignmentsCache", "assignmentsError", "tasksSync", "tasksStatus", "assignmentReminders", "remindersStatus"]);
   renderAssignments(stored.assignmentsCache, stored.assignmentsError);
   renderTasksStatus(stored.tasksSync === true, stored.tasksStatus);
+  renderRemindersStatus(stored.assignmentReminders === true, stored.remindersStatus);
   // Keep the disconnected message visible rather than replacing it with a stale status.
   if (connected && stored.lastStatus) setStatus(stored.lastStatus);
   if (stored.lastUpdated) {
@@ -588,6 +611,9 @@ function showSettings(settings) {
   $("weeks").value = String(settings.scheduleWeeks);
   $("autoSync").checked = settings.autoSync;
   $("tasksSync").checked = tasksSyncOn = settings.tasksSync;
+  $("assignmentReminders").checked = settings.assignmentReminders;
+  $("hideReminderCalendar").checked = settings.hideReminderCalendar;
+  $("hideReminderCalendar").disabled = !settings.assignmentReminders;
   $("interval").value = String(settings.autoSyncMinutes);
   $("interval").disabled = !settings.autoSync;
   $("interval-row").classList.toggle("disabled", !settings.autoSync);
@@ -599,7 +625,7 @@ function showSettings(settings) {
 }
 // Read, normalize, and return settings saved by the extension.
 async function loadSettings() {
-  return resolveSettings(await chrome.storage.local.get(["scheduleWeeks","autoSync","autoSyncMinutes","calendarName","timeZone","theme","tasksSync"]), CONFIG);
+  return resolveSettings(await chrome.storage.local.get(["scheduleWeeks","autoSync","autoSyncMinutes","calendarName","timeZone","theme","tasksSync","assignmentReminders","hideReminderCalendar"]), CONFIG);
 }
 let savedTimer;
 // Briefly show the result of a settings save or reset.
@@ -612,6 +638,7 @@ function flashSaved(text) {
 async function saveSettings() {
   const settings = resolveSettings({
     scheduleWeeks:$("weeks").value, autoSync:$("autoSync").checked, tasksSync:tasksSyncOn,
+    assignmentReminders:$("assignmentReminders").checked, hideReminderCalendar:$("hideReminderCalendar").checked,
     autoSyncMinutes:$("interval").value, calendarName:$("calendarName").value,
     timeZone:$("timeZone").value, theme:$("theme").value
   }, CONFIG);
@@ -619,9 +646,9 @@ async function saveSettings() {
   showSettings(settings); flashSaved("Gemt ✓");
   await message("STUDIESYNC_SETTINGS_CHANGED");
 }
-for (const id of ["weeks","autoSync","interval","calendarName","timeZone","theme"]) $(id).addEventListener("change", saveSettings);
+for (const id of ["weeks","autoSync","interval","calendarName","timeZone","theme","assignmentReminders","hideReminderCalendar"]) $(id).addEventListener("change", saveSettings);
 $("reset").addEventListener("click", async () => {
-  await chrome.storage.local.remove(["scheduleWeeks","autoSync","autoSyncMinutes","calendarName","timeZone","theme","tasksSync"]);
+  await chrome.storage.local.remove(["scheduleWeeks","autoSync","autoSyncMinutes","calendarName","timeZone","theme","tasksSync","assignmentReminders","hideReminderCalendar"]);
   showSettings(await loadSettings()); flashSaved("Nulstillet ✓");
   await message("STUDIESYNC_SETTINGS_CHANGED");
 });
@@ -632,7 +659,7 @@ $("back").addEventListener("click", async () => {
 // Initialize settings, version, account state, dashboard, and onboarding state.
 // Alt hentes i ét kald til lageret, så popup'en kan tegnes straks uden at vente på baggrundsscriptet.
 const LOAD_KEYS = [
-  "scheduleWeeks", "autoSync", "autoSyncMinutes", "calendarName", "timeZone", "theme", "tasksSync", "tasksStatus",
+  "scheduleWeeks", "autoSync", "autoSyncMinutes", "calendarName", "timeZone", "theme", "tasksSync", "tasksStatus", "assignmentReminders", "remindersStatus",
   "googleConnected", "loginHint", "webToken", "lastStatus", "lastUpdated", "lessonsCache",
   "assignmentsCache", "assignmentsError", "dashboardTab", "guideCompletedSteps", "guideCompleted", "guideAutoOpened"
 ];

@@ -58,6 +58,7 @@
     <p id="assignments-empty" class="today-empty" hidden></p>
     <p id="assignments-note" class="today-empty assign-note" hidden></p>
     <p id="tasks-note" class="today-empty tasks-note" hidden></p>
+    <p id="reminders-note" class="today-empty tasks-note" hidden></p>
   </aside>
   </div>
   </div>
@@ -98,6 +99,12 @@
   <div class="card">
     <label class="row" for="tasksSync"><span><strong>Læg afleveringer i Google Tasks</strong><small id="tasks-hint">Opretter listen "Studie+ afleveringer" med dem, du mangler. Kræver en ekstra Google-tilladelse.</small></span><input id="tasksSync" type="checkbox" class="switch" role="switch"></label>
     <p id="tasks-status" class="tasks-status" role="status" aria-live="polite" hidden></p>
+  </div>
+  <h3 class="settings-heading">Påmindelser</h3>
+  <div class="card">
+    <label class="row" for="assignmentReminders"><span><strong>Påmind mig om afleveringer</strong><small>Opretter kalenderen "Studie+ afleveringer" med en begivenhed ved fristen og notifikationer 3 dage, 24 timer og 2 timer før. Slettes, når du har afleveret. Er fristen overskredet, får du en daglig påmindelse.</small></span><input id="assignmentReminders" type="checkbox" class="switch" role="switch"></label>
+    <label class="row" for="hideReminderCalendar"><span><strong>Skjul afleveringskalenderen</strong><small>Vises ikke i kalenderoversigten. Kommer notifikationerne ikke frem, så slå den fra.</small></span><input id="hideReminderCalendar" type="checkbox" class="switch" role="switch"></label>
+    <p id="reminders-status" class="tasks-status" role="status" aria-live="polite" hidden></p>
   </div>
   <h3 class="settings-heading">Udseende</h3>
   <div class="card"><label class="row" for="theme"><span><strong>Farvetema</strong><small>Automatisk følger browserens tema</small></span><select id="theme"></select></label></div>

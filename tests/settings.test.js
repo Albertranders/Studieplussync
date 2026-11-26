@@ -6,12 +6,12 @@ const defaults = { maxWeeks: 12, defaultWeeks: 4, autoSyncMinutes: 30, calendarN
 
 // Cover settings defaults, validation, time-zone labels, ordering, and theme selection.
 test("configuration defaults are used when no saved settings exist", () => {
-  assert.deepEqual(resolveSettings({}, defaults), { scheduleWeeks: 4, autoSync: true, tasksSync: false, autoSyncMinutes: 30, timeZone: "Europe/Copenhagen", theme: "auto", calendarName: "Studie+ skema" });
+  assert.deepEqual(resolveSettings({}, defaults), { scheduleWeeks: 4, autoSync: true, tasksSync: false, assignmentReminders: false, hideReminderCalendar: true, autoSyncMinutes: 30, timeZone: "Europe/Copenhagen", theme: "auto", calendarName: "Studie+ skema" });
 });
 
 test("saved choices override defaults and week counts respect maxWeeks", () => {
   const s = resolveSettings({ scheduleWeeks: 99, autoSync: false, autoSyncMinutes: 60, calendarName: "  Skole  " }, defaults);
-  assert.deepEqual(s, { scheduleWeeks: 12, autoSync: false, tasksSync: false, autoSyncMinutes: 60, timeZone: "Europe/Copenhagen", theme: "auto", calendarName: "Skole" });
+  assert.deepEqual(s, { scheduleWeeks: 12, autoSync: false, tasksSync: false, assignmentReminders: false, hideReminderCalendar: true, autoSyncMinutes: 60, timeZone: "Europe/Copenhagen", theme: "auto", calendarName: "Skole" });
 });
 
 test("invalid saved values fall back to configuration defaults", () => {
@@ -60,4 +60,12 @@ test("Google Tasks er slået fra som standard og slås kun til af true", () => {
   assert.equal(resolveSettings({}, defaults).tasksSync, false);
   assert.equal(resolveSettings({ tasksSync: true }, defaults).tasksSync, true);
   assert.equal(resolveSettings({ tasksSync: "true" }, defaults).tasksSync, false);
+});
+
+test("afleveringspåmindelser er slået fra og kalenderen skjult som standard", () => {
+  const base = resolveSettings({}, defaults);
+  assert.equal(base.assignmentReminders, false);
+  assert.equal(base.hideReminderCalendar, true);
+  assert.equal(resolveSettings({ assignmentReminders: true, hideReminderCalendar: false }, defaults).hideReminderCalendar, false);
+  assert.equal(resolveSettings({ assignmentReminders: "ja" }, defaults).assignmentReminders, false);
 });

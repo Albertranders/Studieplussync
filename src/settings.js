@@ -63,6 +63,8 @@ export function resolveSettings(stored = {}, defaults = {}) {
     scheduleWeeks: weeks >= 1 ? Math.min(maxWeeks, weeks) : defaultWeeks,
     autoSync: stored.autoSync !== false,
     tasksSync: stored.tasksSync === true, // slået fra som standard; kræver ekstra Google-tilladelse
+    assignmentReminders: stored.assignmentReminders === true, // påmindelser om afleveringer i en egen kalender; slået fra som standard
+    hideReminderCalendar: stored.hideReminderCalendar !== false, // afleveringskalenderen er skjult som standard
     autoSyncMinutes: minutes >= 1 ? minutes : defaultMinutes,
     timeZone,
     theme: THEME_CHOICES.some(([id]) => id === stored.theme) ? stored.theme : "auto",

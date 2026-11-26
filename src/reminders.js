@@ -114,8 +114,8 @@ export function planReminders({ open, existing, known = {}, timeZone, now = Date
   const consider = (ref, event, build, patchFor, canCreate) => {
     wanted.add(ref);
     if (!event) {
-      if (!canCreate) plan.unchanged++;
-      else if (known[ref]) plan.skipped++; // brugeren har slettet den
+      if (!canCreate) return; // fx en passeret frist: der er ingenting at oprette
+      if (known[ref]) plan.skipped++; // brugeren har slettet den
       else plan.create.push({ ref, body: build() });
       return;
     }
