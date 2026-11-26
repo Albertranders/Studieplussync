@@ -93,7 +93,7 @@
   }
 
   // Build the user-facing failure status shown in the popup.
-  // Beskriver først, hvad brugeren selv kan gøre, og viser derefter, hvordan et issue oprettes.
+  // Henviser først til hjemmesidens fejlfinding og tilbyder derefter en udfyldt fejlrapport.
   function toStatus(error) {
     const { code, text, technical } = describe(error);
     const fix = CODES[code].fix;
@@ -101,7 +101,7 @@
       ok: false,
       code,
       message: `Fejl ${code}: ${text}`,
-      detail: `${fix} Hjælper det ikke, så opret et issue på GitHub.` +
+      detail: `${fix} Se også hjælpesiden på ${globalThis.STUDIESYNC_CONFIG?.websiteUrl || "https://studieplussync-site.pages.dev"}/support.html. Hjælper det ikke, kan du oprette en fejlrapport via knappen nedenfor.` +
         (technical && technical !== text ? ` Teknisk: ${technical}` : ""),
       issueUrl: issueUrl(code, text, technical)
     };
