@@ -11,7 +11,7 @@ test("status beskriver løsningen, nævner GitHub-issues og indeholder fejlkode 
   assert.equal(status.ok,false);assert.equal(status.code,"E401");
   assert.match(status.message,/^Fejl E401: /);
   assert.ok(status.detail.startsWith(CODES.E401.fix),"detail starter med løsningen");
-  assert.match(status.detail,/opret et issue på GitHub/);
+  assert.match(status.detail,/hjælpesiden/);assert.match(status.detail,/fejlrapport/);
   assert.match(status.detail,/Ugyldigt GWT-svar\./);
   assert.doesNotMatch(status.detail,/Kontakt udvikleren/i);
 });
