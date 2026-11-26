@@ -11,8 +11,8 @@ export async function onRequestPost({ request, env }) {
   try { data = await request.json(); } catch { return json({ error: "Ugyldige formulardata." }, 400); }
   if (typeof data.website === "string" && data.website.trim()) return json({ ok: true }, 200);
   const title = clean(data.title, 120), details = clean(data.details, 5000);
-  const code = clean(data.code, 8), browser = clean(data.browser, 300);
-  if (!title || !details) return json({ error: "Udfyld overskrift og fejlbeskrivelse." }, 400);
+  const code = clean(data.code, 8), browser = clean(data.browser, 300);\n  const email = clean(data.email, 254);\n  const consent = data.consent === "yes";
+  if (!title || !details || !email) return json({ error: "Udfyld overskrift, e-mailadresse og fejlbeskrivelse." }, 400);\n  if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) return json({ error: "Indtast en gyldig e-mailadresse." }, 400);\n  if (!consent) return json({ error: "Du skal give tilladelse til at blive kontaktet om fejlrapporten." }, 400);
   if (title.length < 5 || details.length < 15) return json({ error: "Beskriv problemet lidt mere detaljeret." }, 400);
   const body = [
     "## Fejlbeskrivelse", details,
