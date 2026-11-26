@@ -1,16 +1,81 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="da">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#0b1220">
-  <title>Studieplussync</title>
-  <meta name="description" content="Studieplussync samler dit skoleskema og dine afleveringer ét sted.">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101827">
+  <meta name="description" content="StudieSync synkroniserer dit skema fra Studie+ til din egen Google Kalender. Se også dine kommende afleveringer direkte i browseren.">
+  <title>StudieSync | Dit skema, samlet</title>
+  <style>
+    :root{color-scheme:dark;--bg:#0d1421;--panel:#141f30;--panel2:#19263a;--text:#f4f7fb;--muted:#a8b4c5;--line:#29384d;--green:#9be4bd;--green2:#c5f3d7;--blue:#91b9ff;--max:1120px}
+    *{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:88px}body{margin:0;background:var(--bg);color:var(--text);font:16px/1.65 Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}a{color:inherit;text-decoration:none}a:hover{color:var(--green)}.wrap{width:min(var(--max),calc(100% - 40px));margin:auto}.top{height:76px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;position:sticky;top:0;background:rgba(13,20,33,.88);backdrop-filter:blur(16px);z-index:5}.nav{display:flex;align-items:center;justify-content:space-between;gap:24px}.brand{display:flex;align-items:center;gap:11px;font-weight:750;letter-spacing:-.4px}.logo{width:36px;height:36px;border-radius:11px;background:var(--green);color:#102319;display:grid;place-items:center;font-size:18px;font-weight:900}.links{display:flex;gap:26px;color:var(--muted);font-size:14px}.nav-cta,.btn{display:inline-flex;align-items:center;justify-content:center;gap:9px;padding:11px 17px;border-radius:10px;background:var(--green);color:#102319;font-weight:750;font-size:14px;border:1px solid var(--green);transition:.2s}.nav-cta:hover,.btn:hover{background:var(--green2);color:#102319;transform:translateY(-1px)}.btn.secondary{background:transparent;color:var(--text);border-color:var(--line)}.btn.secondary:hover{border-color:var(--green);color:var(--green)}.hero{padding:105px 0 88px;position:relative;overflow:hidden}.hero:before{content:"";position:absolute;width:620px;height:620px;border-radius:50%;background:radial-gradient(circle,rgba(83,154,124,.17),transparent 68%);right:-170px;top:-220px;pointer-events:none}.hero-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:65px;align-items:center;position:relative}.eyebrow{display:inline-flex;align-items:center;gap:9px;color:var(--green);font-size:13px;font-weight:750;letter-spacing:.08em;text-transform:uppercase}.dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 14px var(--green)}h1{font-size:clamp(42px,6vw,68px);line-height:1.04;letter-spacing:-.055em;margin:22px 0 22px;max-width:660px}h1 span{color:var(--green)}.lead{font-size:18px;color:var(--muted);max-width:560px;line-height:1.7}.actions{display:flex;flex-wrap:wrap;gap:12px;margin:30px 0 23px}.micro{font-size:13px;color:var(--muted)}.preview{border:1px solid #30435a;background:linear-gradient(145deg,#1b2a40,#111b2b);border-radius:20px;padding:18px;box-shadow:0 30px 90px rgba(0,0,0,.35);transform:rotate(1deg)}.preview-head{display:flex;align-items:center;justify-content:space-between;padding:3px 2px 17px;border-bottom:1px solid var(--line)}.preview-brand{font-weight:750;display:flex;align-items:center;gap:9px}.mini-logo{width:26px;height:26px;border-radius:8px;background:var(--green);color:#102319;display:grid;place-items:center;font-size:13px}.status{font-size:11px;color:var(--green);background:rgba(155,228,189,.1);padding:5px 9px;border-radius:20px}.preview-body{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding-top:16px}.widget{background:rgba(5,12,22,.34);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:13px}.widget small{color:var(--muted);font-size:11px}.widget strong{display:block;font-size:17px;margin-top:5px}.lesson{margin-top:10px;padding:10px;border-radius:8px;background:#24344a;font-size:11px}.lesson b{display:block;font-size:12px}.lesson em{display:block;color:var(--muted);font-style:normal;margin-top:2px}.assignment{display:flex;justify-content:space-between;gap:8px;padding:11px 0;border-bottom:1px solid rgba(255,255,255,.08);font-size:11px}.assignment:last-child{border:0}.due{color:#f1c68a;white-space:nowrap}.section{padding:82px 0}.section.alt{background:#111b2a;border-top:1px solid rgba(255,255,255,.05);border-bottom:1px solid rgba(255,255,255,.05)}.section-head{max-width:650px;margin-bottom:34px}.kicker{color:var(--green);font-size:12px;font-weight:800;letter-spacing:.1em;text-transform:uppercase}h2{font-size:clamp(30px,4vw,42px);letter-spacing:-.04em;line-height:1.15;margin:10px 0 14px}.section-head p,.muted{color:var(--muted)}.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}.card{padding:23px;border:1px solid var(--line);background:var(--panel);border-radius:14px}.icon{width:38px;height:38px;border-radius:11px;background:rgba(155,228,189,.1);color:var(--green);display:grid;place-items:center;font-size:18px;margin-bottom:17px}.card h3{font-size:17px;margin:0 0 7px}.card p{font-size:14px;color:var(--muted);margin:0}.steps{display:grid;grid-template-columns:repeat(4,1fr);gap:15px;counter-reset:step}.step{border-top:1px solid var(--line);padding:18px 5px 0;counter-increment:step}.step:before{content:"0" counter(step);color:var(--green);font-size:13px;font-weight:800}.step h3{font-size:16px;margin:10px 0 6px}.step p{font-size:13px;color:var(--muted);margin:0}.notice{margin-top:26px;border:1px solid rgba(155,228,189,.22);background:rgba(155,228,189,.06);padding:17px 19px;border-radius:12px;color:var(--muted);font-size:14px}.notice strong{color:var(--text)}.split{display:grid;grid-template-columns:1fr 1fr;gap:50px;align-items:start}.list{list-style:none;padding:0;margin:20px 0}.list li{padding:9px 0 9px 27px;position:relative;color:var(--muted)}.list li:before{content:"✓";position:absolute;left:0;color:var(--green);font-weight:800}.faq{max-width:820px}.faq details{border-bottom:1px solid var(--line);padding:17px 0}.faq summary{cursor:pointer;font-weight:700;list-style:none;display:flex;justify-content:space-between;gap:20px}.faq summary:after{content:"+";color:var(--green);font-size:20px}.faq details[open] summary:after{content:"−"}.faq details p{color:var(--muted);font-size:14px;margin:12px 0 0}.cta{padding:38px;border:1px solid #33475b;border-radius:18px;background:linear-gradient(120deg,#1a2a3d,#142033);display:flex;align-items:center;justify-content:space-between;gap:30px}.cta p{color:var(--muted);margin:8px 0 0}.footer{padding:30px 0;color:var(--muted);font-size:13px}.footer-inner{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}.footer-links{display:flex;gap:20px;flex-wrap:wrap}
+    @media(max-width:850px){.hero-grid{grid-template-columns:1fr;gap:40px}.preview{max-width:620px}.cards{grid-template-columns:1fr 1fr}.steps{grid-template-columns:1fr 1fr}.split{grid-template-columns:1fr;gap:24px}.hero{padding:75px 0 65px}}
+    @media(max-width:580px){.links{display:none}.wrap{width:min(var(--max),calc(100% - 30px))}.hero{padding:58px 0}.preview{padding:12px}.preview-body{grid-template-columns:1fr}.cards,.steps{grid-template-columns:1fr}.section{padding:60px 0}.cta{padding:25px;align-items:flex-start;flex-direction:column}.nav-cta{padding:9px 12px}.lead{font-size:16px}}
+  </style>
 </head>
 <body>
-  <main>
-    <h1>Studieplussync</h1>
-    <p>Hjemmesiden er under udvikling.</p>
-  </main>
+<header class="top"><div class="wrap nav">
+  <a class="brand" href="#"><span class="logo">S</span><span>StudieSync</span></a>
+  <nav class="links" aria-label="Hovednavigation"><a href="#funktioner">Funktioner</a><a href="#kom-i-gang">Kom i gang</a><a href="#faq">FAQ</a><a href="https://github.com/Albertranders/Studieplussync">GitHub</a></nav>
+  <a class="nav-cta" href="#kom-i-gang">Kom i gang <span aria-hidden="true">↗</span></a>
+</div></header>
+<main>
+  <section class="hero"><div class="wrap hero-grid">
+    <div>
+      <div class="eyebrow"><span class="dot"></span> Studie+ til Google Kalender</div>
+      <h1>Dit skema. <span>Ét samlet overblik.</span></h1>
+      <p class="lead">StudieSync synkroniserer dit skema fra Studie+ til din egen Google Kalender. Hold styr på lektioner og afleveringer direkte fra browseren.</p>
+      <div class="actions"><a class="btn" href="#kom-i-gang">Sådan får du adgang <span aria-hidden="true">→</span></a><a class="btn secondary" href="https://github.com/Albertranders/Studieplussync">Se projektet på GitHub</a></div>
+      <p class="micro">Gratis og privat browserudvidelse. Kræver en Chromium-baseret browser.</p>
+    </div>
+    <div class="preview" aria-label="Illustration af StudieSync dashboard">
+      <div class="preview-head"><div class="preview-brand"><span class="mini-logo">S</span> StudieSync</div><span class="status">● Forbundet</span></div>
+      <div class="preview-body">
+        <div class="widget"><small>STATUS</small><strong>Alt er synkroniseret</strong><div class="lesson"><b>Seneste synkronisering</b><em>Forbindelsen er klar</em></div><div class="lesson"><b>Google Kalender</b><em>Studie+ skema</em></div></div>
+        <div class="widget"><small>DAGENS SKEMA</small><div class="lesson"><b>08:15 · Matematik A</b><em>Lokale og fag fra Studie+</em></div><div class="lesson"><b>10:00 · Fysik A</b><em>Dagens næste lektion</em></div><div class="lesson"><b>12:30 · Kemi A</b><em>Eksempelvisning</em></div></div>
+        <div class="widget" style="grid-column:1/-1"><small>AFLEVERINGER</small><div class="assignment"><span>Rapport · Fysik</span><span class="due">Frist vises i appen</span></div><div class="assignment"><span>Opgave · Matematik</span><span class="due">Sorteret efter frist</span></div></div>
+      </div>
+    </div>
+  </div></section>
+  <section class="section alt" id="funktioner"><div class="wrap">
+    <div class="section-head"><div class="kicker">Overblik uden ekstra arbejde</div><h2>De vigtigste ting samlet ét sted</h2><p>StudieSync bruger din aktive Studie+-session og holder din egen kalender opdateret.</p></div>
+    <div class="cards">
+      <article class="card"><div class="icon">▦</div><h3>Skema i Google Kalender</h3><p>Dine lektioner kopieres til en separat kalender, så du kan se dem sammen med resten af din hverdag.</p></article>
+      <article class="card"><div class="icon">✓</div><h3>Afleveringer i browseren</h3><p>Se de afleveringer, du mangler, sorteret efter frist. De vises i udvidelsen og lægges ikke automatisk i kalenderen.</p></article>
+      <article class="card"><div class="icon">↻</div><h3>Automatisk synkronisering</h3><p>Vælg selv intervallet. Synkroniseringen kører, mens browseren er åben, og Studie+ er tilgængelig.</p></article>
+      <article class="card"><div class="icon">◷</div><h3>Dit eget overblik</h3><p>Se dagens lektioner, forbindelsesstatus og tidspunktet for seneste synkronisering i dashboardet.</p></article>
+      <article class="card"><div class="icon">☷</div><h3>Valgfrie Google Tasks</h3><p>Du kan slå overførsel af afleveringer til Google Tasks til. Funktionen er slået fra som standard.</p></article>
+      <article class="card"><div class="icon">⌁</div><h3>Privatliv først</h3><p>Dine Studie+-data behandles lokalt i browseren og sendes direkte til Google. Der er ingen udviklerserver bag udvidelsen.</p></article>
+    </div>
+  </div></section>
+  <section class="section" id="kom-i-gang"><div class="wrap">
+    <div class="section-head"><div class="kicker">Kom godt i gang</div><h2>Fra download til synkronisering</h2><p>StudieSync installeres manuelt som en upakket browserudvidelse. Din Google-konto skal godkendes, før du kan bruge den.</p></div>
+    <div class="steps">
+      <article class="step"><h3>Få adgang</h3><p>Kontakt Albertranders på Discord, og oplys den Gmail, du vil bruge til Google Kalender.</p></article>
+      <article class="step"><h3>Hent udvidelsen</h3><p>Download projektets ZIP-fil fra GitHub, og pak den ud på computeren.</p></article>
+      <article class="step"><h3>Installer i browseren</h3><p>Åbn browserens udvidelsesside, slå Udviklertilstand til, og vælg Indlæs udpakket.</p></article>
+      <article class="step"><h3>Forbind og synkronisér</h3><p>Log ind på Studie+, forbind din godkendte Google-konto, og tryk Synkronisér nu.</p></article>
+    </div>
+    <div class="notice"><strong>Vigtigt om adgang:</strong> StudieSync er privat. Det er ikke nok blot at downloade udvidelsen. Din Gmail skal først godkendes af udvikleren.</div>
+    <div class="actions" style="margin-top:25px"><a class="btn" href="https://github.com/Albertranders/Studieplussync/archive/refs/heads/main.zip">Download ZIP fra GitHub ↗</a><a class="btn secondary" href="https://github.com/Albertranders/Studieplussync/blob/main/docs/GETTING_STARTED.md">Læs installationsvejledningen</a></div>
+  </div></section>
+  <section class="section alt"><div class="wrap split">
+    <div><div class="kicker">Understøttelse</div><h2>Bygget til Chromium</h2><p class="muted">StudieSync kræver en Chromium-baseret browser, version 116 eller nyere.</p><ul class="list"><li>Google Chrome</li><li>Microsoft Edge</li><li>Opera og Opera GX</li><li>Brave og Vivaldi forventes at virke, men er ikke testet</li></ul></div>
+    <div><div class="kicker">Værd at vide</div><h2>Ikke til alle browsere</h2><p class="muted">Firefox, Safari og mobilbrowsere understøttes ikke. Studie+-fanen skal være åben og logget ind, når skemaet skal synkroniseres.</p><p class="muted">Studie+ har ikke et officielt API. Derfor bygger læsningen af skemaet på uofficielle serverkald, som Studie+ kan ændre. Hvis data ikke kan læses sikkert, stopper StudieSync synkroniseringen uden at ændre kalenderen.</p></div>
+  </div></section>
+  <section class="section" id="faq"><div class="wrap faq">
+    <div class="section-head"><div class="kicker">Spørgsmål og svar</div><h2>Ofte stillede spørgsmål</h2></div>
+    <details><summary>Koster StudieSync noget?</summary><p>Nej. StudieSync er et gratis, privat projekt. Der kan dog være almindelige krav fra Google og browseren for at bruge udvidelsen.</p></details>
+    <details><summary>Hvorfor skal min Gmail godkendes?</summary><p>Udvidelsen er privat, og adgangen til Google-login er begrænset til godkendte konti. Kontakt Albertranders på Discord med den Gmail, du vil bruge.</p></details>
+    <details><summary>Skal jeg give StudieSync min Studie+-adgangskode?</summary><p>Nej. Udvidelsen bruger din eksisterende, åbne Studie+-session. Den beder ikke om eller gemmer din adgangskode, UNI•Login eller MitID.</p></details>
+    <details><summary>Kan StudieSync ændre mine andre Google-kalendere?</summary><p>Nej. Google-adgangen er begrænset til den kalender, StudieSync selv opretter. Dine øvrige kalendere og begivenheder kan ikke læses eller ændres af udvidelsen.</p></details>
+    <details><summary>Synkroniseres skemaet, hvis jeg lukker browseren?</summary><p>Nej. Automatisk synkronisering kræver, at browseren kører, og at en Studie+-fane er åben og logget ind.</p></details>
+    <details><summary>Hvorfor virker det ikke i Firefox eller på mobilen?</summary><p>StudieSync er udviklet til Chromium-baserede browsere og bruger deres udvidelsessystem. Firefox, Safari og mobilbrowsere understøttes ikke.</p></details>
+    <details><summary>Hvad sker der, hvis Studie+ ændrer sig?</summary><p>StudieSync kan miste evnen til at læse skemaet, hvis Studie+ ændrer sine interne serverkald. Udvidelsen stopper synkroniseringen, hvis data ikke kan valideres, så kalenderen ikke bliver overskrevet med ugyldige data.</p></details>
+    <details><summary>Hvordan får jeg hjælp?</summary><p>Brug fejlkoden i udvidelsen, og opret et issue på <a href="https://github.com/Albertranders/Studieplussync/issues">GitHub</a>. Del aldrig adgangskoder, cookies eller sessionsdata.</p></details>
+  </div></section>
+  <section class="section"><div class="wrap"><div class="cta"><div><div class="kicker">Klar til at komme i gang?</div><h2 style="margin-bottom:0">Få styr på skemaet.</h2><p>Se kildekoden, læs vejledningen, eller spørg om adgang.</p></div><div class="actions" style="margin:0"><a class="btn" href="https://github.com/Albertranders/Studieplussync">Åbn GitHub ↗</a><a class="btn secondary" href="https://github.com/Albertranders/Studieplussync/issues">Få hjælp</a></div></div></div></section>
+</main>
+<footer class="footer"><div class="wrap footer-inner"><span>© 2026 StudieSync. Et uafhængigt projekt.</span><div class="footer-links"><a href="https://github.com/Albertranders/Studieplussync/blob/main/PRIVACY.md">Privatlivspolitik</a><a href="https://github.com/Albertranders/Studieplussync/blob/main/CHANGELOG.md">Ændringslog</a><a href="https://github.com/Albertranders/Studieplussync">GitHub</a></div></div></footer>
 </body>
 </html>
