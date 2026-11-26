@@ -10,7 +10,8 @@ import { addPartialProgressToStatus, createSyncProgress } from "./sync-progress.
 import { runWithLimit } from "./concurrency.js";
 import { buildLessonsCache } from "./lessons-cache.js";
 import { buildAssignmentsCache } from "./assignments.js";
-import { planTasks, rememberKeys, TASKS_API, TASKS_LIST_TITLE } from "./tasks.js";
+import { assignmentKey, planTasks, rememberKeys, TASKS_API, TASKS_LIST_TITLE } from "./tasks.js";
+import { planReminders, REMINDER_KIND, REMINDER_KIND_KEY, rememberRefs } from "./reminders.js";
 import { isQuietFailure, shouldSyncOnOpen } from "./open-sync.js";
 
 // The configured web OAuth client must allow chrome.identity's redirect URL.
@@ -23,7 +24,7 @@ const syncLock = createSyncLock(); // Serialize manual and scheduled sync reques
 // Indstillinger: standardværdierne fra config.js, med det brugeren har valgt i menuen "Indstillinger" ovenpå
 async function getSettings() {
   return resolveSettings(
-    await storageGet(["scheduleWeeks", "autoSync", "autoSyncMinutes", "calendarName", "timeZone", "tasksSync"]),
+    await storageGet(["scheduleWeeks", "autoSync", "autoSyncMinutes", "calendarName", "timeZone", "tasksSync", "assignmentReminders", "hideReminderCalendar", "assignmentReminderMinutes", "assignmentNag", "assignmentNagDays", "assignmentNagHour"]),
     CONFIG
   );
 }
@@ -454,6 +455,156 @@ async function enableTasks() {
   return { ok: true, pending: true }; // ingen åben Studie+-fane endnu: opgaverne oprettes ved næste hentning
 }
 
+// --- Kalenderpåmindelser for afleveringer ---
+// Begivenhederne ligger i en egen kalender, så de ikke blandes med lektionerne. Kalenderen kan skjules
+// (den vises så ikke i kalenderoversigten); begivenhederne beholder deres påmindelser.
+const REMINDER_CALENDAR_NAME = "Studie+ afleveringer";
+
+// Finder vores afleveringskalender (gemt id) eller opretter den. Ny kalender = nulstil huskede begivenheder.
+async function ensureReminderCalendar(token) {
+  const { reminderCalendarId } = await storageGet(["reminderCalendarId"]);
+  if (reminderCalendarId) return reminderCalendarId;
+  const { timeZone } = await getSettings();
+  const created = await googleRequest(token, "/calendars", {
+    method: "POST",
+    body: JSON.stringify({ summary: REMINDER_CALENDAR_NAME, description: "Påmindelser om afleveringer fra Studie+ (StudieSync).", timeZone })
+  });
+  await storageSet({ reminderCalendarId: created.id, reminderKnown: {}, reminderHiddenApplied: null });
+  return created.id;
+}
+
+// Skjuler eller viser kalenderen i brugerens kalenderliste, når valget er ændret. Fejler det, prøves det igen næste gang.
+async function applyReminderCalendarVisibility(token, calendarId, hidden) {
+  const { reminderHiddenApplied } = await storageGet(["reminderHiddenApplied"]);
+  if (reminderHiddenApplied === hidden) return;
+  try {
+    await googleRequest(token, `/users/me/calendarList/${encodeURIComponent(calendarId)}`, { method: "PATCH", body: JSON.stringify({ selected: !hidden }) });
+    await storageSet({ reminderHiddenApplied: hidden });
+  } catch {
+    // prøves igen ved næste synkronisering
+  }
+}
+
+// Alle vores påmindelsesbegivenheder (gentagende serier som én).
+async function listReminderEvents(token, calendarId) {
+  const events = [];
+  let pageToken = "";
+  do {
+    const params = new URLSearchParams({ showDeleted: "false", maxResults: "2500", privateExtendedProperty: `${REMINDER_KIND_KEY}=${REMINDER_KIND}` });
+    if (pageToken) params.set("pageToken", pageToken);
+    const result = await googleRequest(token, `/calendars/${encodeURIComponent(calendarId)}/events?${params}`);
+    events.push(...(result.items || []));
+    pageToken = result.nextPageToken || "";
+  } while (pageToken);
+  return events;
+}
+
+// Én synkronisering af påmindelserne. Er de slået fra, ryddes de begivenheder op, der blev oprettet før.
+async function syncRemindersOnce() {
+  const settings = await getSettings();
+  const stored = await storageGet(["assignmentsCache", "googleConnected", "loginHint", "webToken", "reminderCalendarId", "remindersActive"]);
+  if (!isConnected(stored)) return { skipped: true };
+  let open = [];
+  if (settings.assignmentReminders) {
+    const all = stored.assignmentsCache?.assignments;
+    // Ingen hentede afleveringer endnu, eller en ældre kopi uden startdato: vent på friske data.
+    if (!Array.isArray(all)) return { skipped: true };
+    open = all.filter(item => !item.submitted);
+    if (open.some(item => !item.start)) return { skipped: true };
+  } else if (!stored.remindersActive || !stored.reminderCalendarId) {
+    return { skipped: true };
+  }
+  const counts = await withTokenRetry(() => googleToken(false), async token => {
+    let calendarId, existing;
+    for (let attempt = 0; ; attempt++) {
+      calendarId = settings.assignmentReminders ? await ensureReminderCalendar(token) : stored.reminderCalendarId;
+      try { existing = await listReminderEvents(token, calendarId); break; } catch (error) {
+        if (error?.status !== 404) throw error;
+        // Kalenderen er slettet, eller kontoen er en anden: glem den.
+        await chrome.storage.local.remove(["reminderCalendarId", "reminderKnown", "reminderHiddenApplied"]);
+        if (!settings.assignmentReminders) { await storageSet({ remindersActive: false }); return { created: 0, updated: 0, deleted: 0, skipped: 0, unchanged: 0 }; }
+        if (attempt > 0) throw error;
+      }
+    }
+    if (settings.assignmentReminders) await applyReminderCalendarVisibility(token, calendarId, settings.hideReminderCalendar);
+    const { reminderKnown } = await storageGet(["reminderKnown"]);
+    const options = { minutes: settings.assignmentReminderMinutes, nag: settings.assignmentNag, nagDays: settings.assignmentNagDays, nagHour: settings.assignmentNagHour };
+    const plan = planReminders({ open, existing, known: reminderKnown, timeZone: settings.timeZone, now: Date.now(), options });
+    const base = `/calendars/${encodeURIComponent(calendarId)}/events`;
+    const wanted = new Set(open.flatMap(item => [`${assignmentKey(item)}:deadline`, ...(options.nag ? [`${assignmentKey(item)}:overdue`] : [])]));
+    const created = {}, removed = [];
+    const result = { created: 0, updated: 0, deleted: 0, skipped: plan.skipped, unchanged: plan.unchanged };
+    const jobs = [
+      ...plan.create.map(job => async () => {
+        const event = await googleRequest(token, base, { method: "POST", body: JSON.stringify(job.body) });
+        created[job.ref] = event.id; result.created++;
+      }),
+      ...plan.update.map(job => async () => {
+        await googleRequest(token, `${base}/${encodeURIComponent(job.id)}`, { method: "PATCH", body: JSON.stringify(job.body) });
+        result.updated++;
+      }),
+      ...plan.delete.map(job => async () => {
+        try { await googleRequest(token, `${base}/${encodeURIComponent(job.id)}`, { method: "DELETE" }); } catch (error) {
+          if (error?.status !== 404 && error?.status !== 410) throw error; // allerede slettet
+        }
+        if (!wanted.has(job.ref)) removed.push(job.ref); // en dublet fjerner ikke den huskede original
+        result.deleted++;
+      })
+    ];
+    try {
+      await runWithLimit(jobs, WRITE_CONCURRENCY, async run => { await run(); await sleep(WRITE_DELAY_MS); });
+    } finally {
+      await storageSet({ reminderKnown: rememberRefs(reminderKnown, created, removed) });
+    }
+    await storageSet({ remindersActive: settings.assignmentReminders });
+    return result;
+  });
+  return { counts };
+}
+
+// Kun én synkronisering ad gangen. Fejl gemmes som status og kaster aldrig videre. Bliver der bedt om en ny,
+// mens en kører (fx fordi en indstilling er ændret), kører den igen bagefter, så den nye ændring ikke går tabt.
+let remindersSyncRun = null;
+let remindersRerun = false;
+async function syncRemindersRound() {
+  try {
+    const result = await syncRemindersOnce();
+    if (result.skipped) return { ok: true, skipped: true };
+    const status = { ok: true, at: new Date().toISOString(), counts: result.counts };
+    await storageSet({ remindersStatus: status });
+    return status;
+  } catch (error) {
+    const status = { ...STUDIESYNC_ERRORS.toStatus(error), at: new Date().toISOString() };
+    await storageSet({ remindersStatus: status });
+    return status;
+  }
+}
+function syncReminders() {
+  if (remindersSyncRun) { remindersRerun = true; return remindersSyncRun; }
+  remindersSyncRun = (async () => {
+    try {
+      let status;
+      do { remindersRerun = false; status = await syncRemindersRound(); } while (remindersRerun);
+      return status;
+    } finally {
+      remindersSyncRun = null;
+    }
+  })();
+  return remindersSyncRun;
+}
+
+// Ændrede indstillinger for påmindelser: hent friske afleveringer og synkronisér; uden åben Studie+-fane bruges kopien.
+async function applyReminderSettings() {
+  const settings = await getSettings();
+  const { remindersActive } = await storageGet(["remindersActive"]);
+  if (!settings.assignmentReminders && !remindersActive) return;
+  // Var en hentning allerede i gang, har den måske læst de gamle indstillinger; så synkroniseres igen bagefter.
+  // Ellers synkroniserer den nye hentning selv med de nye indstillinger. Uden åben Studie+-fane bruges den gemte kopi.
+  const alreadyRunning = Boolean(assignmentsRefresh);
+  const refreshed = await refreshAssignments();
+  if (alreadyRunning || !refreshed.ok) await syncReminders();
+}
+
 // Afleveringer: hent de uafleverede opgaver fra Studie+-fanen og gem en lokal kopi til popup'en.
 // Kræver kun Studie+ (ikke Google). Er ingen Studie+-fane åben, beholdes den seneste kopi uden fejl.
 let assignmentsRefresh = null; // forhindrer to hentninger på samme tid
@@ -466,6 +617,7 @@ function refreshAssignments() {
       const result = await sendTabMessage(tab, "STUDIESYNC_READ_ASSIGNMENTS");
       await storageSet({ assignmentsCache: buildAssignmentsCache(result.assignments), assignmentsError: null });
       await syncTasks(); // lægger dem i Google Tasks, hvis det er slået til (fejl gemmes som status)
+      await syncReminders(); // og som påmindelser i kalenderen "Studie+ afleveringer", hvis det er slået til
       return { ok: true };
     } catch (error) {
       const status = STUDIESYNC_ERRORS.toStatus(error);
@@ -746,6 +898,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     return true;
   }
   if (message?.type === "STUDIESYNC_SETTINGS_CHANGED") {
+    applyReminderSettings().catch(() => {}); // kører videre i baggrunden, så "Gemt" ikke venter på Google
     Promise.all([applyAlarm(), renameCalendar()]).then(() => sendResponse({ ok: true })).catch(() => sendResponse({ ok: false }));
     return true;
   }
