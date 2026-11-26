@@ -1,5 +1,5 @@
 // Render the popup dashboard, onboarding guide, navigation menu, and settings.
-import { INTERVAL_CHOICES, THEME_CHOICES, WEEK_CHOICES, autoSyncText, resolveSettings, timeZoneLabel, timeZoneOptions } from "./settings.js";
+import { INTERVAL_CHOICES, MAX_REMINDERS, NAG_DAY_CHOICES, NAG_HOUR_CHOICES, REMINDER_CHOICES, THEME_CHOICES, WEEK_CHOICES, autoSyncText, reminderLabel, resolveSettings, timeZoneLabel, timeZoneOptions } from "./settings.js";
 import { canOpenGuide, shouldAutoOpenGuide } from "./onboarding.js";
 import { isConnected } from "./auth.js";
 import { todayLessons } from "./lessons-cache.js";
@@ -12,6 +12,7 @@ let currentGuideAction = null;
 let guidePausedForSettings = false;
 let guideFeedback = "";
 let guideFeedbackType = "neutral";
+let reminderMinutes = []; // valgte påmindelser før fristen (minutter), vist som knapper
 let tasksSyncOn = false; // gemt valg; ændres kun efter en vellykket tilladelse (se handleren nedenfor)
 const state = $("state"), detail = $("detail"), dot = $("dot"), updated = $("last-sync-value");
 const syncButton = $("sync"), connectButton = $("connect");
@@ -222,8 +223,6 @@ function renderRemindersStatus(on, status) {
     element.classList.toggle("bad", bad);
   }
 }
-// "Skjul kalenderen" giver kun mening, når påmindelserne er slået til.
-$("assignmentReminders").addEventListener("change", () => { $("hideReminderCalendar").disabled = !$("assignmentReminders").checked; });
 // Slå Google Tasks til eller fra. Til: Google beder om det ekstra scope (et vindue åbner, og popup'en kan lukke sig;
 // baggrundsscriptet gennemfører og gemmer resultatet, så popup'en viser det, næste gang den åbnes).
 $("tasksSync").addEventListener("change", async () => {
@@ -606,14 +605,53 @@ function applyTheme(theme) {
   else delete document.documentElement.dataset.theme;
 }
 // Fill all settings controls from a normalized settings object.
+// Knapper til valg af, hvornår man får besked før fristen (op til MAX_REMINDERS).
+function renderReminderChips(disabled) {
+  const box = $("reminder-chips");
+  box.replaceChildren();
+  const choices = [...new Set([...REMINDER_CHOICES, ...reminderMinutes])].sort((a, b) => a - b);
+  for (const minutes of choices) {
+    const on = reminderMinutes.includes(minutes);
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "chip";
+    chip.textContent = reminderLabel(minutes);
+    chip.setAttribute("aria-pressed", String(on));
+    chip.disabled = disabled || (!on && reminderMinutes.length >= MAX_REMINDERS);
+    chip.addEventListener("click", () => {
+      reminderMinutes = on ? reminderMinutes.filter(m => m !== minutes) : [...reminderMinutes, minutes];
+      saveSettings();
+    });
+    box.append(chip);
+  }
+}
+const nagHourLabel = h => `${String(h).padStart(2, "0")}.00`;
+const nagDaysLabel = n => (n === 1 ? "1 dag" : `${n} dage`);
+// De øvrige valg følger kontakterne: alt er låst, når påmindelser er slået fra, og dage/tid, når den daglige er det.
+function updateReminderControls(settings) {
+  const on = settings.assignmentReminders, nag = on && settings.assignmentNag;
+  $("hideReminderCalendar").disabled = !on;
+  $("assignmentNag").disabled = !on;
+  for (const id of ["assignmentNagDays", "assignmentNagHour"]) $(id).disabled = !nag;
+  $("nag-days-row").classList.toggle("disabled", !nag);
+  $("nag-hour-row").classList.toggle("disabled", !nag);
+  $("reminder-options").classList.toggle("disabled", !on);
+  renderReminderChips(!on);
+}
 function showSettings(settings) {
   fillChoices(settings);
+  reminderMinutes = settings.assignmentReminderMinutes;
+  fillSelect($("assignmentNagDays"), [...new Set([...NAG_DAY_CHOICES, settings.assignmentNagDays])].sort((a, b) => a - b), nagDaysLabel);
+  fillSelect($("assignmentNagHour"), [...new Set([...NAG_HOUR_CHOICES, settings.assignmentNagHour])].sort((a, b) => a - b), nagHourLabel);
+  $("assignmentNagDays").value = String(settings.assignmentNagDays);
+  $("assignmentNagHour").value = String(settings.assignmentNagHour);
+  $("assignmentNag").checked = settings.assignmentNag;
   $("weeks").value = String(settings.scheduleWeeks);
   $("autoSync").checked = settings.autoSync;
   $("tasksSync").checked = tasksSyncOn = settings.tasksSync;
   $("assignmentReminders").checked = settings.assignmentReminders;
   $("hideReminderCalendar").checked = settings.hideReminderCalendar;
-  $("hideReminderCalendar").disabled = !settings.assignmentReminders;
+  updateReminderControls(settings);
   $("interval").value = String(settings.autoSyncMinutes);
   $("interval").disabled = !settings.autoSync;
   $("interval-row").classList.toggle("disabled", !settings.autoSync);
@@ -625,7 +663,7 @@ function showSettings(settings) {
 }
 // Read, normalize, and return settings saved by the extension.
 async function loadSettings() {
-  return resolveSettings(await chrome.storage.local.get(["scheduleWeeks","autoSync","autoSyncMinutes","calendarName","timeZone","theme","tasksSync","assignmentReminders","hideReminderCalendar"]), CONFIG);
+  return resolveSettings(await chrome.storage.local.get(["scheduleWeeks","autoSync","autoSyncMinutes","calendarName","timeZone","theme","tasksSync","assignmentReminders","hideReminderCalendar","assignmentReminderMinutes","assignmentNag","assignmentNagDays","assignmentNagHour"]), CONFIG);
 }
 let savedTimer;
 // Briefly show the result of a settings save or reset.
@@ -639,6 +677,8 @@ async function saveSettings() {
   const settings = resolveSettings({
     scheduleWeeks:$("weeks").value, autoSync:$("autoSync").checked, tasksSync:tasksSyncOn,
     assignmentReminders:$("assignmentReminders").checked, hideReminderCalendar:$("hideReminderCalendar").checked,
+    assignmentReminderMinutes:reminderMinutes, assignmentNag:$("assignmentNag").checked,
+    assignmentNagDays:$("assignmentNagDays").value, assignmentNagHour:$("assignmentNagHour").value,
     autoSyncMinutes:$("interval").value, calendarName:$("calendarName").value,
     timeZone:$("timeZone").value, theme:$("theme").value
   }, CONFIG);
@@ -646,9 +686,9 @@ async function saveSettings() {
   showSettings(settings); flashSaved("Gemt ✓");
   await message("STUDIESYNC_SETTINGS_CHANGED");
 }
-for (const id of ["weeks","autoSync","interval","calendarName","timeZone","theme","assignmentReminders","hideReminderCalendar"]) $(id).addEventListener("change", saveSettings);
+for (const id of ["weeks","autoSync","interval","calendarName","timeZone","theme","assignmentReminders","hideReminderCalendar","assignmentNag","assignmentNagDays","assignmentNagHour"]) $(id).addEventListener("change", saveSettings);
 $("reset").addEventListener("click", async () => {
-  await chrome.storage.local.remove(["scheduleWeeks","autoSync","autoSyncMinutes","calendarName","timeZone","theme","tasksSync","assignmentReminders","hideReminderCalendar"]);
+  await chrome.storage.local.remove(["scheduleWeeks","autoSync","autoSyncMinutes","calendarName","timeZone","theme","tasksSync","assignmentReminders","hideReminderCalendar","assignmentReminderMinutes","assignmentNag","assignmentNagDays","assignmentNagHour"]);
   showSettings(await loadSettings()); flashSaved("Nulstillet ✓");
   await message("STUDIESYNC_SETTINGS_CHANGED");
 });

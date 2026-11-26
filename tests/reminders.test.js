@@ -97,3 +97,52 @@ test("de kendte begivenheder begrænses til 500, og fjernede glemmes", () => {
   assert.equal(Object.keys(known).length, 500);
   assert.equal(rememberRefs({ a: "1", b: "2" }, { c: "3" }, ["a"]).a, undefined);
 });
+
+test("valgte påmindelser bruges, sorteres og begrænses til 5", () => {
+  const event = deadlineEvent(item("Forsøg"), TZ, { minutes: [60, 4320, 60, 1440, 120, 30, 15] });
+  assert.deepEqual(event.reminders.overrides.map(o => o.minutes), [4320, 1440, 120, 60, 30]);
+  assert.deepEqual(deadlineEvent(item("Forsøg"), TZ, { minutes: [] }).reminders, { useDefault: false, overrides: [] });
+});
+
+test("ændrede påmindelser opdaterer den eksisterende begivenhed, også hvis Google ændrer rækkefølgen", () => {
+  const a = item("Ét");
+  const existing = remote(deadlineEvent(a, TZ), "d1");
+  existing.reminders.overrides.reverse(); // Google returnerer dem i en anden rækkefølge: ingen ændring
+  const same = planReminders({ open: [a], existing: [existing, remote(overdueEvent(a, TZ, NOW), "o1")], timeZone: TZ, now: NOW });
+  assert.equal(same.update.length, 0);
+  const changed = planReminders({ open: [a], existing: [existing, remote(overdueEvent(a, TZ, NOW), "o1")], timeZone: TZ, now: NOW, options: { minutes: [1440] } });
+  assert.deepEqual(changed.update.map(u => u.id), ["d1"]);
+  assert.deepEqual(changed.update[0].body.reminders.overrides, [{ method: "popup", minutes: 1440 }]);
+});
+
+test("slås den daglige påmindelse fra, oprettes den ikke, og en eksisterende slettes", () => {
+  const a = item("Ét");
+  const fresh = planReminders({ open: [a], existing: [], timeZone: TZ, now: NOW, options: { nag: false } });
+  assert.deepEqual(fresh.create.map(j => j.ref.split(":")[1]), ["deadline"]);
+  const existing = [remote(deadlineEvent(a, TZ), "d1"), remote(overdueEvent(a, TZ, NOW), "o1")];
+  const off = planReminders({ open: [a], existing, timeZone: TZ, now: NOW, options: { nag: false } });
+  assert.deepEqual(off.delete.map(j => j.id), ["o1"]);
+});
+
+test("antal dage og klokkeslæt for den daglige påmindelse følger indstillingerne", () => {
+  const a = item("Ét");
+  const event = overdueEvent(a, TZ, NOW, { nagDays: 30, nagHour: 7 });
+  assert.deepEqual(event.recurrence, ["RRULE:FREQ=DAILY;COUNT=30"]);
+  assert.equal(event.start.dateTime, "2026-12-07T07:00:00");
+  // Allerede oprettet med standarden: antal dage og tid opdateres
+  const existing = [remote(deadlineEvent(a, TZ), "d1"), remote(overdueEvent(a, TZ, NOW), "o1")];
+  const p = planReminders({ open: [a], existing, timeZone: TZ, now: NOW, options: { nagDays: 30, nagHour: 7 } });
+  assert.deepEqual(p.update.map(u => u.id), ["o1"]);
+  assert.deepEqual(p.update[0].body.recurrence, ["RRULE:FREQ=DAILY;COUNT=30"]);
+  assert.equal(p.update[0].body.start.dateTime, "2026-12-07T07:00:00");
+});
+
+test("et ændret klokkeslæt flytter ikke en serie, der allerede er begyndt, til en anden dag", () => {
+  const a = item("Forsinket", "2026-11-20T22:55:00.000Z");
+  const created = remote(overdueEvent(a, TZ, new Date("2026-11-22T07:00:00.000Z").getTime()), "o1"); // starter 23. nov. kl. 8
+  created.start.dateTime = "2026-11-23T08:00:00+01:00"; // som Google returnerer den
+  const p = plan([a], [created]);
+  assert.equal(p.update.length, 0);
+  const moved = planReminders({ open: [a], existing: [created], timeZone: TZ, now: NOW, options: { nagHour: 18 } });
+  assert.equal(moved.update[0].body.start.dateTime, "2026-11-23T18:00:00");
+});

@@ -198,8 +198,9 @@ Under **Indstillinger → Google Tasks** kan du lægge de afleveringer, du mangl
 
 Under **Indstillinger → Påmindelser** kan du få notifikationer om afleveringer, du mangler. Det er slået fra som standard.
 
-- Udvidelsen opretter kalenderen **Studie+ afleveringer** (adskilt fra din lektionskalender) med en begivenhed på 15 minutter ved fristen. Den giver notifikationer 3 dage, 24 timer og 2 timer før.
-- Google Kalender kan kun minde *før* en begivenhed. Er fristen overskredet, får du derfor en daglig begivenhed kl. 8, som oprettes på forhånd, i op til 14 dage efter fristen. Den virker, selv når browseren er lukket.
+- Udvidelsen opretter kalenderen **Studie+ afleveringer** (adskilt fra din lektionskalender) med en begivenhed på 15 minutter ved fristen. Som standard giver den notifikationer 3 dage, 24 timer og 2 timer før. Du vælger selv, hvornår, ved at trykke på tidspunkterne under Indstillinger (op til 5, fra 15 minutter til 1 uge før). Google tillader højst 5 påmindelser pr. begivenhed.
+- Google Kalender kan kun minde *før* en begivenhed. Er fristen overskredet, får du derfor en daglig begivenhed, som oprettes på forhånd. Som standard kl. 8 i op til 14 dage efter fristen; du kan vælge 3, 7, 14 eller 30 dage og et andet klokkeslæt, eller slå den daglige påmindelse fra. Den virker, selv når browseren er lukket.
+- Ændrer du tidspunkterne, dagene eller klokkeslættet, opdateres de eksisterende begivenheder. En daglig serie, der allerede er begyndt, beholder sin startdag; kun klokkeslættet ændres.
 - Begivenhederne slettes, når afleveringen ikke længere mangler. Det sker, når udvidelsen synkroniserer, så browseren og en Studie+-fane skal være åbne. Afleverer du uden, fortsætter påmindelserne, til næste synkronisering.
 - En begivenhed, du selv sletter, oprettes ikke igen. Dine andre begivenheder bliver aldrig rørt.
 - Kalenderen er skjult som standard (vises ikke i kalenderoversigten). Google skriver ikke, om en skjult kalender stadig sender notifikationer, og det kan afhænge af telefonen. Kommer notifikationerne ikke frem, så slå "Skjul afleveringskalenderen" fra.

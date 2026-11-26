@@ -37,7 +37,7 @@ globalThis.fetch = async (url, options = {}) => {
 };
 await import("../src/background.js");
 const send = message => new Promise(resolve => { const l = listeners.find(fn => fn(message, {}, resolve) === true); if (!l) resolve("ingen handler"); });
-const wait = async (condition, ms = 5000) => { const end = Date.now() + ms; while (!condition()) { if (Date.now() > end) throw new Error("timeout"); await new Promise(r => setTimeout(r, 25)); } };
+const wait = async (condition, ms = 5000) => { const end = Date.now() + ms; while (!condition()) { if (Date.now() > end) throw new Error("timeout: " + condition.toString() + " | begivenheder: " + JSON.stringify(kinds()) + " | status: " + JSON.stringify(store.remindersStatus) + " | indstillinger: " + JSON.stringify({ nag: store.assignmentNag, min: store.assignmentReminderMinutes })); await new Promise(r => setTimeout(r, 25)); } };
 // Frister i fremtiden (relativt til nu), så testen ikke bliver forældet.
 const day = n => { const d = new Date(); d.setDate(d.getDate() + n); d.setHours(22, 0, 0, 0); return d.toISOString(); };
 const START = new Date(Date.now() - 864e5).toISOString(); // fast, som i virkelige data (indgår i opgavens nøgle)
@@ -69,6 +69,26 @@ test("kalenderpåmindelser: oprette, skjule, slette ved aflevering og ved slukni
   assert.ok(!calls.some(c => /^(POST|PATCH|DELETE)/.test(c)), calls.join("\n"));
   assert.deepEqual(store.remindersStatus.counts, { created: 0, updated: 0, deleted: 0, skipped: 0, unchanged: 4 });
   assert.equal(calendarPatches.length, 1, "kalenderens synlighed ændres kun, når valget ændres");
+
+  // 2b. Brugeren vælger andre tidspunkter og 30 dages daglig påmindelse: eksisterende begivenheder opdateres (ingen nye)
+  Object.assign(store, { assignmentReminderMinutes: [60, 1440], assignmentNagDays: 30 });
+  await send({ type: "STUDIESYNC_SETTINGS_CHANGED" });
+  await wait(() => store.remindersStatus.counts.updated === 4);
+  assert.equal(events.size, 4);
+  for (const e of events.values()) {
+    if (e.extendedProperties.private.studiesyncRole === "deadline") assert.deepEqual(e.reminders.overrides.map(o => o.minutes), [1440, 60]);
+    else assert.deepEqual(e.recurrence, ["RRULE:FREQ=DAILY;COUNT=30"]);
+  }
+  console.log("2b ok: tidspunkter og antal dage opdateret");
+
+  // 2c. Den daglige påmindelse slås fra (de to serier slettes) og til igen (de oprettes igen)
+  store.assignmentNag = false;
+  await send({ type: "STUDIESYNC_SETTINGS_CHANGED" });
+  await wait(() => kinds().length === 2 && kinds().every(k => k.startsWith("deadline")));
+  store.assignmentNag = true;
+  await send({ type: "STUDIESYNC_SETTINGS_CHANGED" });
+  await wait(() => kinds().length === 4);
+  console.log("2c ok: daglig påmindelse fra og til");
 
   // 3. En aflevering er afleveret: begge begivenheder slettes
   assignments = [item("Forsøg", 5)];

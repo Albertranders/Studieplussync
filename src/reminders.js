@@ -26,7 +26,9 @@ export function addDays(date, days) {
 const pad = n => String(n).padStart(2, "0");
 const clock = (hour, minute) => `${pad(hour)}:${pad(minute)}`;
 const normalize = options => ({
-  minutes: (Array.isArray(options?.minutes) ? options.minutes : DEFAULTS.minutes).map(Number).filter(n => n >= 0 && n <= 40320).slice(0, 5),
+  // Højst 5 (Googles grænse), uden dubletter og længst tid først, så begivenheden altid ser ens ud.
+  minutes: [...new Set((Array.isArray(options?.minutes) ? options.minutes : DEFAULTS.minutes).map(Number).filter(n => Number.isInteger(n) && n >= 0 && n <= 40320))].sort((a, b) => b - a).slice(0, 5),
+  nag: options?.nag !== false, // daglig påmindelse efter fristen
   nagDays: Math.max(1, Math.min(60, Math.round(Number(options?.nagDays) || DEFAULTS.nagDays))),
   nagHour: Math.max(0, Math.min(23, Math.round(Number(options?.nagHour ?? DEFAULTS.nagHour))))
 });
@@ -88,9 +90,10 @@ export function rememberRefs(known, created, removed = []) {
   return merged;
 }
 
+// Google kan returnere påmindelserne i en anden rækkefølge, så de sammenlignes sorteret.
 const sameOverrides = (event, minutes) => {
-  const have = (event.reminders?.overrides || []).map(o => `${o.method}:${o.minutes}`).join(",");
-  return event.reminders?.useDefault === false && have === minutes.map(m => `popup:${m}`).join(",");
+  const have = (event.reminders?.overrides || []).map(o => `${o.method}:${o.minutes}`).sort().join(",");
+  return event.reminders?.useDefault === false && have === minutes.map(m => `popup:${m}`).sort().join(",");
 };
 const sameInstant = (a, b) => new Date(a).getTime() === new Date(b).getTime();
 
@@ -111,7 +114,8 @@ export function planReminders({ open, existing, known = {}, timeZone, now = Date
     if (byRef.has(ref)) extras.push({ id: event.id, ref }); else byRef.set(ref, event);
   }
   const wanted = new Set();
-  const consider = (ref, event, build, patchFor, canCreate) => {
+  const consider = (ref, event, build, patchFor, canCreate, enabled = true) => {
+    if (!enabled) return; // ikke ønsket: en eksisterende begivenhed slettes nedenfor
     wanted.add(ref);
     if (!event) {
       if (!canCreate) return; // fx en passeret frist: der er ingenting at oprette
@@ -140,11 +144,21 @@ export function planReminders({ open, existing, known = {}, timeZone, now = Date
       if (event.summary !== want.summary) patch.summary = want.summary;
       if (JSON.stringify(event.recurrence || []) !== JSON.stringify(want.recurrence)) patch.recurrence = want.recurrence;
       if (!sameOverrides(event, [0])) patch.reminders = want.reminders;
-      // Startdagen flyttes kun, mens serien ikke er begyndt (fx hvis fristen er flyttet); ellers ville den skifte hver dag.
       const { firstAt } = firstNagStart(item, timeZone, now, opts.nagHour);
-      if (firstAt.getTime() > now && !sameInstant(event.start?.dateTime, firstAt)) { patch.start = want.start; patch.end = want.end; }
+      if (firstAt.getTime() > now) {
+        // Serien er ikke begyndt (fx hvis fristen er flyttet): flyt startdagen.
+        if (!sameInstant(event.start?.dateTime, firstAt)) { patch.start = want.start; patch.end = want.end; }
+      } else {
+        // Serien er begyndt: startdagen bliver, men klokkeslættet følger indstillingen.
+        const have = String(event.start?.dateTime || "");
+        if (/^\d{4}-\d{2}-\d{2}T\d{2}/.test(have) && Number(have.slice(11, 13)) !== opts.nagHour) {
+          const day = have.slice(0, 10);
+          patch.start = { dateTime: `${day}T${clock(opts.nagHour, 0)}:00`, timeZone };
+          patch.end = { dateTime: `${day}T${clock(opts.nagHour, EVENT_MINUTES)}:00`, timeZone };
+        }
+      }
       return Object.keys(patch).length ? patch : null;
-    }, true);
+    }, true, opts.nag);
   }
   for (const [ref, event] of byRef) if (!wanted.has(ref)) plan.delete.push({ id: event.id, ref });
   plan.delete.push(...extras);

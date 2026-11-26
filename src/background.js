@@ -24,7 +24,7 @@ const syncLock = createSyncLock(); // Serialize manual and scheduled sync reques
 // Indstillinger: standardværdierne fra config.js, med det brugeren har valgt i menuen "Indstillinger" ovenpå
 async function getSettings() {
   return resolveSettings(
-    await storageGet(["scheduleWeeks", "autoSync", "autoSyncMinutes", "calendarName", "timeZone", "tasksSync", "assignmentReminders", "hideReminderCalendar"]),
+    await storageGet(["scheduleWeeks", "autoSync", "autoSyncMinutes", "calendarName", "timeZone", "tasksSync", "assignmentReminders", "hideReminderCalendar", "assignmentReminderMinutes", "assignmentNag", "assignmentNagDays", "assignmentNagHour"]),
     CONFIG
   );
 }
@@ -528,9 +528,10 @@ async function syncRemindersOnce() {
     }
     if (settings.assignmentReminders) await applyReminderCalendarVisibility(token, calendarId, settings.hideReminderCalendar);
     const { reminderKnown } = await storageGet(["reminderKnown"]);
-    const plan = planReminders({ open, existing, known: reminderKnown, timeZone: settings.timeZone, now: Date.now() });
+    const options = { minutes: settings.assignmentReminderMinutes, nag: settings.assignmentNag, nagDays: settings.assignmentNagDays, nagHour: settings.assignmentNagHour };
+    const plan = planReminders({ open, existing, known: reminderKnown, timeZone: settings.timeZone, now: Date.now(), options });
     const base = `/calendars/${encodeURIComponent(calendarId)}/events`;
-    const wanted = new Set(open.flatMap(item => [`${assignmentKey(item)}:deadline`, `${assignmentKey(item)}:overdue`]));
+    const wanted = new Set(open.flatMap(item => [`${assignmentKey(item)}:deadline`, ...(options.nag ? [`${assignmentKey(item)}:overdue`] : [])]));
     const created = {}, removed = [];
     const result = { created: 0, updated: 0, deleted: 0, skipped: plan.skipped, unchanged: plan.unchanged };
     const jobs = [
@@ -561,20 +562,29 @@ async function syncRemindersOnce() {
   return { counts };
 }
 
-// Kun én synkronisering ad gangen. Fejl gemmes som status og kaster aldrig videre.
+// Kun én synkronisering ad gangen. Fejl gemmes som status og kaster aldrig videre. Bliver der bedt om en ny,
+// mens en kører (fx fordi en indstilling er ændret), kører den igen bagefter, så den nye ændring ikke går tabt.
 let remindersSyncRun = null;
+let remindersRerun = false;
+async function syncRemindersRound() {
+  try {
+    const result = await syncRemindersOnce();
+    if (result.skipped) return { ok: true, skipped: true };
+    const status = { ok: true, at: new Date().toISOString(), counts: result.counts };
+    await storageSet({ remindersStatus: status });
+    return status;
+  } catch (error) {
+    const status = { ...STUDIESYNC_ERRORS.toStatus(error), at: new Date().toISOString() };
+    await storageSet({ remindersStatus: status });
+    return status;
+  }
+}
 function syncReminders() {
-  if (remindersSyncRun) return remindersSyncRun;
+  if (remindersSyncRun) { remindersRerun = true; return remindersSyncRun; }
   remindersSyncRun = (async () => {
     try {
-      const result = await syncRemindersOnce();
-      if (result.skipped) return { ok: true, skipped: true };
-      const status = { ok: true, at: new Date().toISOString(), counts: result.counts };
-      await storageSet({ remindersStatus: status });
-      return status;
-    } catch (error) {
-      const status = { ...STUDIESYNC_ERRORS.toStatus(error), at: new Date().toISOString() };
-      await storageSet({ remindersStatus: status });
+      let status;
+      do { remindersRerun = false; status = await syncRemindersRound(); } while (remindersRerun);
       return status;
     } finally {
       remindersSyncRun = null;
@@ -588,8 +598,11 @@ async function applyReminderSettings() {
   const settings = await getSettings();
   const { remindersActive } = await storageGet(["remindersActive"]);
   if (!settings.assignmentReminders && !remindersActive) return;
+  // Var en hentning allerede i gang, har den måske læst de gamle indstillinger; så synkroniseres igen bagefter.
+  // Ellers synkroniserer den nye hentning selv med de nye indstillinger. Uden åben Studie+-fane bruges den gemte kopi.
+  const alreadyRunning = Boolean(assignmentsRefresh);
   const refreshed = await refreshAssignments();
-  if (!refreshed.ok) await syncReminders();
+  if (alreadyRunning || !refreshed.ok) await syncReminders();
 }
 
 // Afleveringer: hent de uafleverede opgaver fra Studie+-fanen og gem en lokal kopi til popup'en.

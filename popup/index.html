@@ -102,7 +102,11 @@
   </div>
   <h3 class="settings-heading">Påmindelser</h3>
   <div class="card">
-    <label class="row" for="assignmentReminders"><span><strong>Påmind mig om afleveringer</strong><small>Opretter kalenderen "Studie+ afleveringer" med en begivenhed ved fristen og notifikationer 3 dage, 24 timer og 2 timer før. Slettes, når du har afleveret. Er fristen overskredet, får du en daglig påmindelse.</small></span><input id="assignmentReminders" type="checkbox" class="switch" role="switch"></label>
+    <label class="row" for="assignmentReminders"><span><strong>Påmind mig om afleveringer</strong><small>Opretter kalenderen "Studie+ afleveringer" med en begivenhed ved fristen. Slettes, når du har afleveret.</small></span><input id="assignmentReminders" type="checkbox" class="switch" role="switch"></label>
+    <div class="row stackrow" id="reminder-options"><span class="stack"><strong>Notifikation før fristen</strong><small>Vælg op til 5 tidspunkter.</small></span><div id="reminder-chips" class="chips" role="group" aria-label="Notifikation før fristen"></div></div>
+    <label class="row" for="assignmentNag"><span><strong>Daglig påmindelse efter fristen</strong><small>Hver morgen, til du har afleveret.</small></span><input id="assignmentNag" type="checkbox" class="switch" role="switch"></label>
+    <label class="row" for="assignmentNagDays" id="nag-days-row"><span><strong>I hvor mange dage</strong></span><select id="assignmentNagDays"></select></label>
+    <label class="row" for="assignmentNagHour" id="nag-hour-row"><span><strong>Klokkeslæt</strong></span><select id="assignmentNagHour"></select></label>
     <label class="row" for="hideReminderCalendar"><span><strong>Skjul afleveringskalenderen</strong><small>Vises ikke i kalenderoversigten. Kommer notifikationerne ikke frem, så slå den fra.</small></span><input id="hideReminderCalendar" type="checkbox" class="switch" role="switch"></label>
     <p id="reminders-status" class="tasks-status" role="status" aria-live="polite" hidden></p>
   </div>
