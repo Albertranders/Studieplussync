@@ -11,17 +11,17 @@ test("status beskriver løsningen, nævner GitHub-issues og indeholder fejlkode 
   assert.equal(status.ok,false);assert.equal(status.code,"E401");
   assert.match(status.message,/^Fejl E401: /);
   assert.ok(status.detail.startsWith(CODES.E401.fix),"detail starter med løsningen");
-  assert.match(status.detail,/opret et issue på GitHub/);
+  assert.match(status.detail,/hjælpesiden/);assert.match(status.detail,/fejlrapport/);
   assert.match(status.detail,/Ugyldigt GWT-svar\./);
   assert.doesNotMatch(status.detail,/Kontakt udvikleren/i);
 });
 test("ingen fejlkode beder brugeren kontakte udvikleren",()=>{for(const [code,{fix}] of Object.entries(CODES))assert.doesNotMatch(fix,/kontakt udvikleren/i,code);});
 test("issue-linket peger på repoets issues og har fejlkode, tekst og version udfyldt",()=>{
   const url=new URL(toStatus(new globalThis.StudySyncError("E306","HTTP 401")).issueUrl);
-  assert.equal(url.origin+url.pathname,"https://github.com/Albertranders/Studieplussync/issues/new");
+  assert.equal(url.origin+url.pathname,"https://studieplussync-site.pages.dev/support.html");
   assert.match(url.searchParams.get("title"),/^Fejl E306: /);
-  const body=url.searchParams.get("body");
-  assert.match(body,/\*\*Fejlkode:\*\* E306/);assert.match(body,/HTTP 401/);assert.match(body,/StudieSync-version/);
+  const body=url.searchParams.get("details");
+  assert.match(body,/Fejlkode: E306/);assert.match(body,/HTTP 401/);assert.match(body,/StudieSync-version/);assert.match(body,/Browser:/);assert.match(body,/User-Agent:/);assert.ok(url.searchParams.has("browser"));
 });
 test("fejl uden kode bliver E999, netværksfejl bliver E901",()=>{assert.equal(describe(new Error("noget andet")).code,"E999");assert.equal(describe(new TypeError("Failed to fetch")).code,"E901");assert.equal(describe(new Error("[E777] findes ikke")).code,"E999");});
 test("alle koder står i README-tabellen",()=>{const readme=readFileSync(new URL("../README.md",import.meta.url),"utf8");const inTable=[...readme.matchAll(/^\| (E\d{3}) \|/gm)].map(m=>m[1]);assert.deepEqual(inTable.sort(),Object.keys(CODES).sort());});

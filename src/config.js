@@ -22,6 +22,9 @@ globalThis.STUDIESYNC_CONFIG = {
   // Hvor brugere kan oprette et issue, hvis en fejl ikke kan løses med den vejledning, popup'en viser.
   issuesUrl: "https://github.com/Albertranders/Studieplussync/issues",
 
+  // Offentlig hjælpeside og vejledninger.
+  websiteUrl: "https://studieplussync-site.pages.dev",
+
   // --------------------------------------------------------------------------
   // 2. User-configurable synchronization settings.
   // --------------------------------------------------------------------------
