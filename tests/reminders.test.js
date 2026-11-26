@@ -107,7 +107,7 @@ test("valgte påmindelser bruges, sorteres og begrænses til 5", () => {
 test("ændrede påmindelser opdaterer den eksisterende begivenhed, også hvis Google ændrer rækkefølgen", () => {
   const a = item("Ét");
   const existing = remote(deadlineEvent(a, TZ), "d1");
-  existing.start.dateTime = "2026-12-07T08:00:00+01:00"; // Google returnerer lokal tid med UTC-offset
+  existing.start.dateTime = "2026-12-06T22:00:00+01:00"; // Samme tidspunkt som 21:00Z, med lokal UTC-offset
   existing.reminders.overrides.reverse(); // Google returnerer dem i en anden rækkefølge: ingen ændring
   const same = planReminders({ open: [a], existing: [existing, remote(overdueEvent(a, TZ, NOW), "o1")], timeZone: TZ, now: NOW });
   assert.equal(same.update.length, 0);
