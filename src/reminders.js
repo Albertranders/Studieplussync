@@ -96,6 +96,9 @@ const sameOverrides = (event, minutes) => {
   return event.reminders?.useDefault === false && have === minutes.map(m => `popup:${m}`).sort().join(",");
 };
 const sameInstant = (a, b) => new Date(a).getTime() === new Date(b).getTime();
+// Google kan returnere en lokal kalenderdato med UTC-offset. Sammenlign væg-uret,
+// ikke JavaScripts fortolkning af en dato uden offset som UTC.
+const sameWallTime = (a, b) => String(a || "").slice(0, 16) === String(b || "").slice(0, 16);
 
 // Sammenligner de afleveringer, der mangler, med begivenhederne i vores kalender.
 // - `open`: afleveringer, der ikke er afleveret (med fag, titel, frist og start)
@@ -147,7 +150,7 @@ export function planReminders({ open, existing, known = {}, timeZone, now = Date
       const { firstAt } = firstNagStart(item, timeZone, now, opts.nagHour);
       if (firstAt.getTime() > now) {
         // Serien er ikke begyndt (fx hvis fristen er flyttet): flyt startdagen.
-        if (!sameInstant(event.start?.dateTime, firstAt)) { patch.start = want.start; patch.end = want.end; }
+        if (!sameWallTime(event.start?.dateTime, want.start.dateTime)) { patch.start = want.start; patch.end = want.end; }
       } else {
         // Serien er begyndt: startdagen bliver, men klokkeslættet følger indstillingen.
         const have = String(event.start?.dateTime || "");
