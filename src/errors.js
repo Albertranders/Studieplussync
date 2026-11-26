@@ -71,25 +71,24 @@
     return { code, text: CODES[code].text, technical };
   }
 
-  // Link til et nyt GitHub-issue med fejlkode, teknisk tekst og version allerede udfyldt.
-  // Brugeren gennemser og sender selv issuet, så intet sendes automatisk.
-  const DEFAULT_ISSUES_URL = "https://github.com/Albertranders/Studieplussync/issues";
+  // Fejlrapporten udfyldes på hjemmesiden og sendes server-side til GitHub.
+  const DEFAULT_WEBSITE_URL = "https://studieplussync-site.pages.dev";
   function issueUrl(code, text, technical) {
-    const base = globalThis.STUDIESYNC_CONFIG?.issuesUrl || DEFAULT_ISSUES_URL;
+    const base = globalThis.STUDIESYNC_CONFIG?.websiteUrl || DEFAULT_WEBSITE_URL;
     const version = globalThis.chrome?.runtime?.getManifest?.()?.version || "ukendt";
     const browser = globalThis.navigator?.userAgent || "ukendt";
-    const body = [
-      `**Fejlkode:** ${code}`,
-      `**Fejltekst:** ${text}`,
-      technical && technical !== text ? `**Teknisk tekst:** ${technical}` : "",
-      `**StudieSync-version:** ${version}`,
-      `**Browser:** ${browser}`,
-      "**Opstod fejlen ved manuel eller automatisk synkronisering?** ",
-      "**Hvad gjorde du, lige før fejlen opstod?** ",
-      "",
-      "_Fjern private oplysninger (fx e-mailadresser og skemadetaljer), før du sender._"
-    ].filter(line => line !== "").join("\n\n");
-    return `${base}/new?title=${encodeURIComponent(`Fejl ${code}: ${text}`)}&body=${encodeURIComponent(body)}`;
+    const details = [
+      `Fejlkode: ${code}`,
+      `Fejltekst: ${text}`,
+      technical && technical !== text ? `Teknisk tekst: ${technical}` : "",
+      `StudieSync-version: ${version}`,
+      `Browser: ${browser}`
+    ].filter(Boolean).join("\n");
+    const url = new URL("/support.html", base);
+    url.searchParams.set("title", `Fejl ${code}: ${text}`);
+    url.searchParams.set("details", details);
+    url.searchParams.set("code", code);
+    return url.toString();
   }
 
   // Build the user-facing failure status shown in the popup.
