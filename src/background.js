@@ -10,6 +10,7 @@ import { addPartialProgressToStatus, createSyncProgress } from "./sync-progress.
 import { runWithLimit } from "./concurrency.js";
 import { buildLessonsCache } from "./lessons-cache.js";
 import { buildAssignmentsCache } from "./assignments.js";
+import { planTasks, rememberKeys, TASKS_API, TASKS_LIST_TITLE } from "./tasks.js";
 import { isQuietFailure, shouldSyncOnOpen } from "./open-sync.js";
 
 // The configured web OAuth client must allow chrome.identity's redirect URL.
@@ -22,7 +23,7 @@ const syncLock = createSyncLock(); // Serialize manual and scheduled sync reques
 // Indstillinger: standardværdierne fra config.js, med det brugeren har valgt i menuen "Indstillinger" ovenpå
 async function getSettings() {
   return resolveSettings(
-    await storageGet(["scheduleWeeks", "autoSync", "autoSyncMinutes", "calendarName", "timeZone"]),
+    await storageGet(["scheduleWeeks", "autoSync", "autoSyncMinutes", "calendarName", "timeZone", "tasksSync"]),
     CONFIG
   );
 }
@@ -84,7 +85,7 @@ async function googleToken(interactive) {
 // Beder Google om et nyt token. `interactive` = må der vises et login-vindue?
 // `selectAccount` = vis kontovælgeren (ved første forbindelse og ved "Skift Google-konto").
 async function requestToken(interactive, selectAccount = false) {
-  const { loginHint } = await storageGet(["loginHint"]);
+  const { loginHint, tasksSync } = await storageGet(["loginHint", "tasksSync"]);
   const state = crypto.randomUUID();
   const url = buildAuthUrl({
     clientId: CLIENT_ID,
@@ -92,7 +93,8 @@ async function requestToken(interactive, selectAccount = false) {
     state,
     interactive,
     loginHint,
-    selectAccount
+    selectAccount,
+    tasks: tasksSync === true // ekstra scope, kun når brugeren har slået Google Tasks til
   });
   let redirectUrl;
   try {
@@ -189,7 +191,9 @@ function isRateLimited(status, body) {
 }
 
 // Vælger fejlkode ud fra Googles svar
-function googleErrorCode(status, body) {
+function googleErrorCode(status, body, tasks = false) {
+  if (tasks && status === 403 && /SERVICE_DISABLED|has not been used|is disabled/i.test(body)) return "E208";
+  if (tasks && status === 403 && /insufficient|scope/i.test(body)) return "E207";
   if (isRateLimited(status, body)) return "E204";
   if (status === 401) return "E201";
   if (status === 403) return "E202";
@@ -204,7 +208,7 @@ async function googleRequest(token, path, options = {}) {
     // Beder Google os vente, venter alle parallelle kald, så de ikke alle rammer grænsen igen.
     const pause = cooldownUntil - Date.now();
     if (pause > 0) await sleep(pause);
-    const response = await fetch(calendarUrl(path), {
+    const response = await fetch(path.startsWith("https://") ? path : calendarUrl(path), {
       ...options,
       headers: {
         Authorization: `Bearer ${token}`,
@@ -221,7 +225,8 @@ async function googleRequest(token, path, options = {}) {
     const retryable = isRateLimited(response.status, body) || response.status >= 500;
     // Giv op hvis fejlen ikke kan genforsøges, eller vi har brugt alle forsøg
     if (!retryable || attempt >= MAX_TRIES) {
-      const failure = new StudySyncError(googleErrorCode(response.status, body), `Google Kalender (${response.status}): ${body.slice(0, 300)}`);
+      const tasks = path.startsWith(TASKS_API);
+      const failure = new StudySyncError(googleErrorCode(response.status, body, tasks), `${tasks ? "Google Tasks" : "Google Kalender"} (${response.status}): ${body.slice(0, 300)}`);
       failure.status = response.status;
       throw failure;
     }
@@ -329,6 +334,126 @@ function sendTabMessage(tab, type, weeks) {
   });
 }
 
+// --- Google Tasks ---
+// Afleveringerne lægges i en egen opgaveliste. Andre lister og opgaver uden vores markør røres aldrig.
+
+// Finder vores liste (gemt id, ellers på navn fra en tidligere installation) eller opretter den.
+async function ensureTasksList(token) {
+  const { tasksListId } = await storageGet(["tasksListId"]);
+  if (tasksListId) return tasksListId;
+  const lists = await googleRequest(token, `${TASKS_API}/users/@me/lists?maxResults=100`);
+  let id = (lists.items || []).find(list => list.title === TASKS_LIST_TITLE)?.id;
+  if (!id) {
+    const created = await googleRequest(token, `${TASKS_API}/users/@me/lists`, { method: "POST", body: JSON.stringify({ title: TASKS_LIST_TITLE }) });
+    id = created.id;
+  }
+  await storageSet({ tasksListId: id, tasksKnown: {} });
+  return id;
+}
+
+// Alle opgaver i listen, også afsluttede (ellers ville en afsluttet opgave se ud, som om den var slettet).
+async function listTasks(token, listId) {
+  const items = [];
+  let pageToken = "";
+  do {
+    const params = new URLSearchParams({ showCompleted: "true", showHidden: "true", maxResults: "100" });
+    if (pageToken) params.set("pageToken", pageToken);
+    const result = await googleRequest(token, `${TASKS_API}/lists/${encodeURIComponent(listId)}/tasks?${params}`);
+    items.push(...(result.items || []));
+    pageToken = result.nextPageToken || "";
+  } while (pageToken);
+  return items;
+}
+
+// Én synkronisering af afleveringerne til Google Tasks. Returnerer { skipped } eller { counts }.
+async function syncTasksOnce() {
+  const settings = await getSettings();
+  if (!settings.tasksSync) return { skipped: true };
+  const stored = await storageGet(["assignmentsCache", "googleConnected", "loginHint", "webToken"]);
+  const all = stored.assignmentsCache?.assignments;
+  const open = Array.isArray(all) ? all.filter(item => !item.submitted) : [];
+  // Ingen forbundet konto, ingen hentede afleveringer endnu, eller en ældre kopi uden startdato: vent på friske data.
+  if (!isConnected(stored) || !Array.isArray(all) || open.some(item => !item.start)) return { skipped: true };
+  const counts = await withTokenRetry(() => googleToken(false), async token => {
+    let listId, existing;
+    for (let attempt = 0; ; attempt++) {
+      listId = await ensureTasksList(token);
+      try { existing = await listTasks(token, listId); break; } catch (error) {
+        // Listen er slettet, eller kontoen er en anden: glem den, og opret en ny én gang.
+        if (error?.status !== 404 || attempt > 0) throw error;
+        await chrome.storage.local.remove(["tasksListId", "tasksKnown"]);
+      }
+    }
+    const { tasksKnown } = await storageGet(["tasksKnown"]);
+    const plan = planTasks({ open, existing, known: tasksKnown, timeZone: settings.timeZone });
+    const base = `${TASKS_API}/lists/${encodeURIComponent(listId)}/tasks`;
+    const created = {};
+    const result = { created: 0, updated: 0, completed: 0, skipped: plan.skipped, unchanged: plan.unchanged };
+    const jobs = [
+      ...plan.create.map(job => async () => {
+        const task = await googleRequest(token, base, { method: "POST", body: JSON.stringify(job.body) });
+        created[job.key] = task.id; result.created++;
+      }),
+      ...plan.update.map(job => async () => {
+        await googleRequest(token, `${base}/${encodeURIComponent(job.id)}`, { method: "PATCH", body: JSON.stringify(job.body) });
+        result.updated++;
+      }),
+      ...plan.complete.map(job => async () => {
+        await googleRequest(token, `${base}/${encodeURIComponent(job.id)}`, { method: "PATCH", body: JSON.stringify({ status: "completed" }) });
+        result.completed++;
+      })
+    ];
+    try {
+      await runWithLimit(jobs, WRITE_CONCURRENCY, async run => { await run(); await sleep(WRITE_DELAY_MS); });
+    } finally {
+      // Husk de oprettede opgaver, også ved en fejl midtvejs, så de ikke oprettes to gange.
+      if (Object.keys(created).length) await storageSet({ tasksKnown: rememberKeys(tasksKnown, created) });
+    }
+    return result;
+  });
+  return { counts };
+}
+
+// Altid kun én synkronisering ad gangen. Fejl gemmes som status og kaster aldrig videre, så de ikke vælter noget andet.
+let tasksSyncRun = null;
+function syncTasks() {
+  if (tasksSyncRun) return tasksSyncRun;
+  tasksSyncRun = (async () => {
+    try {
+      const result = await syncTasksOnce();
+      if (result.skipped) return { ok: true, skipped: true };
+      const status = { ok: true, at: new Date().toISOString(), counts: result.counts };
+      await storageSet({ tasksStatus: status });
+      return status;
+    } catch (error) {
+      const status = { ...STUDIESYNC_ERRORS.toStatus(error), at: new Date().toISOString() };
+      await storageSet({ tasksStatus: status });
+      return status;
+    } finally {
+      tasksSyncRun = null;
+    }
+  })();
+  return tasksSyncRun;
+}
+
+// Brugeren har slået Google Tasks til. Google bedes om det ekstra scope, og dernæst hentes afleveringerne og lægges i Google Tasks.
+async function enableTasks() {
+  const stored = await storageGet(["googleConnected", "loginHint", "webToken"]);
+  if (!isConnected(stored)) throw new StudySyncError("E201", "Forbind Google Kalender først.");
+  const startedAt = new Date().toISOString();
+  await storageSet({ tasksSync: true });
+  try {
+    await requestToken(true); // Google viser kun den ekstra tilladelse
+  } catch (error) {
+    await storageSet({ tasksSync: false });
+    throw error;
+  }
+  const refreshed = await refreshAssignments();
+  const { tasksStatus } = await storageGet(["tasksStatus"]);
+  if (refreshed.ok && tasksStatus?.at >= startedAt) return tasksStatus;
+  return { ok: true, pending: true }; // ingen åben Studie+-fane endnu: opgaverne oprettes ved næste hentning
+}
+
 // Afleveringer: hent de uafleverede opgaver fra Studie+-fanen og gem en lokal kopi til popup'en.
 // Kræver kun Studie+ (ikke Google). Er ingen Studie+-fane åben, beholdes den seneste kopi uden fejl.
 let assignmentsRefresh = null; // forhindrer to hentninger på samme tid
@@ -340,6 +465,7 @@ function refreshAssignments() {
       if (!tab) return { ok: false, quiet: true };
       const result = await sendTabMessage(tab, "STUDIESYNC_READ_ASSIGNMENTS");
       await storageSet({ assignmentsCache: buildAssignmentsCache(result.assignments), assignmentsError: null });
+      await syncTasks(); // lægger dem i Google Tasks, hvis det er slået til (fejl gemmes som status)
       return { ok: true };
     } catch (error) {
       const status = STUDIESYNC_ERRORS.toStatus(error);
@@ -615,6 +741,10 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     return true;
   }
   // Indstillinger er ændret i popup'en: opdatér alarmen og kalendernavnet
+  if (message?.type === "STUDIESYNC_TASKS_ENABLE") {
+    enableTasks().then(sendResponse).catch(error => sendResponse(STUDIESYNC_ERRORS.toStatus(error)));
+    return true;
+  }
   if (message?.type === "STUDIESYNC_SETTINGS_CHANGED") {
     Promise.all([applyAlarm(), renameCalendar()]).then(() => sendResponse({ ok: true })).catch(() => sendResponse({ ok: false }));
     return true;

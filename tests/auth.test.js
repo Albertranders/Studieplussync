@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildAuthUrl, isConnected, isTokenFresh, parseAuthRedirect, withTokenRetry } from "../src/auth.js";
+import { TASKS_SCOPE, buildAuthUrl, isConnected, isTokenFresh, parseAuthRedirect, withTokenRetry } from "../src/auth.js";
 
 // Exercise OAuth URL construction, redirect validation, connection state, and token retry rules.
 const REDIRECT = "https://abcdef.chromiumapp.org/";
@@ -96,4 +96,11 @@ test("isConnected prefers the explicit flag and falls back to email or token", (
   assert.equal(isConnected({ webToken: { token: "t" } }), true);
   assert.equal(isConnected({}), false);
   assert.equal(isConnected(), false);
+});
+
+test("scopet til Google Tasks bedes kun om, når det er slået til", () => {
+  const off = new URL(buildAuthUrl({ clientId: "c", redirectUri: REDIRECT, state: "s" })).searchParams.get("scope").split(" ");
+  const on = new URL(buildAuthUrl({ clientId: "c", redirectUri: REDIRECT, state: "s", tasks: true })).searchParams.get("scope").split(" ");
+  assert.ok(!off.includes(TASKS_SCOPE));
+  assert.ok(on.includes(TASKS_SCOPE) && on.includes("https://www.googleapis.com/auth/calendar.app.created"));
 });

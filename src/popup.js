@@ -12,6 +12,7 @@ let currentGuideAction = null;
 let guidePausedForSettings = false;
 let guideFeedback = "";
 let guideFeedbackType = "neutral";
+let tasksSyncOn = false; // gemt valg; ændres kun efter en vellykket tilladelse (se handleren nedenfor)
 const state = $("state"), detail = $("detail"), dot = $("dot"), updated = $("last-sync-value");
 const syncButton = $("sync"), connectButton = $("connect");
 const menu = $("menu"), menuButton = $("menu-button"), historyPanel = $("history-panel");
@@ -72,6 +73,7 @@ async function refreshAuth(stored) {
   connectButton.hidden = connected;
   syncButton.hidden = !connected;
   $("menu-account").hidden = !connected;
+  $("tasksSync").disabled = !connected; // Google Tasks kræver en forbundet Google-konto
   $("menu-email").textContent = auth.email ? `Forbundet som ${auth.email}` : "Google-konto forbundet";
   $("connection-value").textContent = connected ? "Google forbundet" : "Ikke forbundet";
   $("connection-detail").textContent = connected ? (auth.email || "Google Kalender er klar") : "Log ind for at starte";
@@ -185,6 +187,57 @@ function renderAssignments(cache, error) {
     list.append(row);
   }
 }
+// Status for Google Tasks: i fanen Afleveringer og under indstillingen.
+function tasksStatusText(on, status) {
+  if (!on) return { text: "", bad: false };
+  if (!status) return { text: "Google Tasks: opgaverne oprettes, når afleveringerne er hentet.", bad: false };
+  if (status.ok === false) return { text: `Google Tasks: ${status.message || "Kunne ikke opdatere."}`, bad: true };
+  const c = status.counts || {};
+  const parts = [[c.created, "nye"], [c.updated, "ændrede"], [c.completed, "afsluttede"]].filter(([n]) => n > 0).map(([n, label]) => `${n} ${label}`);
+  return { text: `Google Tasks: ${parts.length ? parts.join(", ") : "ingen ændringer"}.`, bad: false };
+}
+function renderTasksStatus(on, status) {
+  const { text, bad } = tasksStatusText(on, status);
+  for (const id of ["tasks-note", "tasks-status"]) {
+    const element = $(id);
+    element.textContent = text;
+    element.hidden = !text;
+    element.classList.toggle("bad", bad);
+  }
+}
+// Slå Google Tasks til eller fra. Til: Google beder om det ekstra scope (et vindue åbner, og popup'en kan lukke sig;
+// baggrundsscriptet gennemfører og gemmer resultatet, så popup'en viser det, næste gang den åbnes).
+$("tasksSync").addEventListener("change", async () => {
+  const box = $("tasksSync");
+  if (!box.checked) {
+    tasksSyncOn = false;
+    await chrome.storage.local.set({ tasksSync: false });
+    renderTasksStatus(false);
+    flashSaved("Gemt ✓");
+    await message("STUDIESYNC_SETTINGS_CHANGED");
+    return;
+  }
+  box.disabled = true;
+  $("tasks-status").hidden = false;
+  $("tasks-status").classList.remove("bad");
+  $("tasks-status").textContent = "Giv tilladelsen i Googles vindue…";
+  const result = await message("STUDIESYNC_TASKS_ENABLE");
+  box.disabled = false;
+  if (result?.ok === false || !result) {
+    box.checked = tasksSyncOn = false;
+    $("tasks-status").classList.add("bad");
+    $("tasks-status").textContent = result?.message ? `${result.message} ${result.detail || ""}`.trim() : "Google Tasks kunne ikke slås til.";
+    return;
+  }
+  tasksSyncOn = true;
+  flashSaved("Slået til ✓");
+  if (result.pending) {
+    renderTasksStatus(true, null);
+    $("tasks-status").textContent = "Slået til. Opgaverne oprettes, når Studie+ er åben, og afleveringerne er hentet.";
+  } else {
+    renderTasksStatus(true, result);
+  }
+});
 // Skift mellem fanerne Skema og Afleveringer. Valget huskes til næste gang popup'en åbnes.
 function selectTab(tab, save = true) {
   tab = resolveTab(tab);
@@ -211,6 +264,9 @@ $("tab-schedule").parentElement.addEventListener("keydown", event => {
 });
 // Opdatér afleveringerne straks, når en synkronisering gemmer en ny kopi.
 chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === "local" && changes.tasksStatus) {
+    chrome.storage.local.get(["tasksSync"]).then(stored => renderTasksStatus(stored.tasksSync === true, changes.tasksStatus.newValue));
+  }
   if (area === "local" && (changes.assignmentsCache || changes.assignmentsError)) {
     chrome.storage.local.get(["assignmentsCache", "assignmentsError"]).then(stored =>
       renderAssignments(stored.assignmentsCache, stored.assignmentsError));
@@ -229,8 +285,9 @@ async function refreshAssignmentsIfStale() {
 }
 // Refresh sync metadata and today's schedule. Everything comes from the local storage, so it is instant.
 async function refreshDashboard(connected = true, stored) {
-  stored ??= await chrome.storage.local.get(["lastStatus", "lastUpdated", "lessonsCache", "assignmentsCache", "assignmentsError"]);
+  stored ??= await chrome.storage.local.get(["lastStatus", "lastUpdated", "lessonsCache", "assignmentsCache", "assignmentsError", "tasksSync", "tasksStatus"]);
   renderAssignments(stored.assignmentsCache, stored.assignmentsError);
+  renderTasksStatus(stored.tasksSync === true, stored.tasksStatus);
   // Keep the disconnected message visible rather than replacing it with a stale status.
   if (connected && stored.lastStatus) setStatus(stored.lastStatus);
   if (stored.lastUpdated) {
@@ -530,6 +587,7 @@ function showSettings(settings) {
   fillChoices(settings);
   $("weeks").value = String(settings.scheduleWeeks);
   $("autoSync").checked = settings.autoSync;
+  $("tasksSync").checked = tasksSyncOn = settings.tasksSync;
   $("interval").value = String(settings.autoSyncMinutes);
   $("interval").disabled = !settings.autoSync;
   $("interval-row").classList.toggle("disabled", !settings.autoSync);
@@ -541,7 +599,7 @@ function showSettings(settings) {
 }
 // Read, normalize, and return settings saved by the extension.
 async function loadSettings() {
-  return resolveSettings(await chrome.storage.local.get(["scheduleWeeks","autoSync","autoSyncMinutes","calendarName","timeZone","theme"]), CONFIG);
+  return resolveSettings(await chrome.storage.local.get(["scheduleWeeks","autoSync","autoSyncMinutes","calendarName","timeZone","theme","tasksSync"]), CONFIG);
 }
 let savedTimer;
 // Briefly show the result of a settings save or reset.
@@ -553,7 +611,7 @@ function flashSaved(text) {
 // Normalize and persist the current settings, then notify the service worker.
 async function saveSettings() {
   const settings = resolveSettings({
-    scheduleWeeks:$("weeks").value, autoSync:$("autoSync").checked,
+    scheduleWeeks:$("weeks").value, autoSync:$("autoSync").checked, tasksSync:tasksSyncOn,
     autoSyncMinutes:$("interval").value, calendarName:$("calendarName").value,
     timeZone:$("timeZone").value, theme:$("theme").value
   }, CONFIG);
@@ -563,7 +621,7 @@ async function saveSettings() {
 }
 for (const id of ["weeks","autoSync","interval","calendarName","timeZone","theme"]) $(id).addEventListener("change", saveSettings);
 $("reset").addEventListener("click", async () => {
-  await chrome.storage.local.remove(["scheduleWeeks","autoSync","autoSyncMinutes","calendarName","timeZone","theme"]);
+  await chrome.storage.local.remove(["scheduleWeeks","autoSync","autoSyncMinutes","calendarName","timeZone","theme","tasksSync"]);
   showSettings(await loadSettings()); flashSaved("Nulstillet ✓");
   await message("STUDIESYNC_SETTINGS_CHANGED");
 });
@@ -574,7 +632,7 @@ $("back").addEventListener("click", async () => {
 // Initialize settings, version, account state, dashboard, and onboarding state.
 // Alt hentes i ét kald til lageret, så popup'en kan tegnes straks uden at vente på baggrundsscriptet.
 const LOAD_KEYS = [
-  "scheduleWeeks", "autoSync", "autoSyncMinutes", "calendarName", "timeZone", "theme",
+  "scheduleWeeks", "autoSync", "autoSyncMinutes", "calendarName", "timeZone", "theme", "tasksSync", "tasksStatus",
   "googleConnected", "loginHint", "webToken", "lastStatus", "lastUpdated", "lessonsCache",
   "assignmentsCache", "assignmentsError", "dashboardTab", "guideCompletedSteps", "guideCompleted", "guideAutoOpened"
 ];

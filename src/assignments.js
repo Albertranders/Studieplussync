@@ -24,6 +24,7 @@ export function buildAssignmentsCache(items, now = new Date(), maxOverdueDays = 
       subject: String(item.subject || "").slice(0, 120),
       title: String(item.title).slice(0, 200),
       due: due.toISOString(),
+      ...(Number.isNaN(new Date(item.start).getTime()) ? {} : { start: new Date(item.start).toISOString() }),
       submitted: item.submitted === true
     });
     if (assignments.length >= MAX_ASSIGNMENTS) break;

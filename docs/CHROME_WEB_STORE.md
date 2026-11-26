@@ -46,6 +46,7 @@ Udvidelsen synkroniserer brugerens Studie+ skema til en separat Google Kalender.
 - **identity**: Google-login (OAuth) til at oprette og opdatere kalenderen "Studie+ skema" via scope calendar.app.created (samt openid email til at huske, hvilken konto der er logget ind).
 - **Host permission https://all.uddataplus.dk/*** og **https://all.studieplus.dk/***: Læser skemaet fra brugerens egen åbne og indloggede Studie+-fane.
 - **Host permission https://www.googleapis.com/***: Kalder Google Calendar API for at oprette, ændre og slette events i udvidelsens egen kalender.
+- **Host permission https://tasks.googleapis.com/***: Kalder Google Tasks API for valgfrit at lægge brugerens uafleverede afleveringer i en egen liste, "Studie+ afleveringer". Bruges kun, hvis brugeren selv slår funktionen til i Indstillinger. Scopet `https://www.googleapis.com/auth/tasks` bedes først om i det øjeblik, fordi Google ikke har et smallere scope til Tasks; udvidelsen rører kun sin egen liste.
 - **Host permission https://oauth2.googleapis.com/***: Tilbagekalder brugerens Google-adgang, når brugeren vælger "Log ud af Google" i menuen.
 - **Content script på https://all.uddataplus.dk/*** og **https://all.studieplus.dk/***: Læser skemaet fra siden, så udvidelsen ikke behøver kodeord eller cookies.
 - **Fjernstyret kode**: Nej. Al kode ligger i pakken.
