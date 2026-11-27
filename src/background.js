@@ -1,5 +1,5 @@
 // Service worker coordinating Google sign-in, calendar requests, and schedule synchronization.
-import { buildPlan, contentHash, eventBody, isSafeSchedule, isSuspiciousDrop, MANAGED_HASH, MANAGED_KEY } from "./sync.js";
+import { buildPlan, contentHash, eventBody, isSafeSchedule, isSuspiciousDrop, MANAGED_HASH, MANAGED_KEY, MANAGED_REMINDER } from "./sync.js";
 import "./config.js"; // Load shared extension settings.
 import "./errors.js"; // Load shared error codes and status helpers.
 import { buildAuthUrl, isConnected, isTokenFresh, parseAuthRedirect, REVOKE_URL, USERINFO_URL, withTokenRetry } from "./auth.js";
@@ -19,12 +19,14 @@ const CONFIG = globalThis.STUDIESYNC_CONFIG; // Shared defaults and integration 
 const CLIENT_ID = CONFIG.googleClientId;
 
 const ALARM_NAME = "studiesync-auto-sync";
-const syncLock = createSyncLock(); // Serialize manual and scheduled sync requests.
+const syncLock = createSyncLock();
+// Kort tekst for lektionsnotifikationerne; gemmes ved hver vellykket synkronisering, så en ændring kan opdages.
+const lessonReminderSignature = s => (s.lessonReminders ? JSON.stringify([s.lessonReminderMinutes, s.lessonReminderScope]) : "off"); // Serialize manual and scheduled sync requests.
 
 // Indstillinger: standardværdierne fra config.js, med det brugeren har valgt i menuen "Indstillinger" ovenpå
 async function getSettings() {
   return resolveSettings(
-    await storageGet(["scheduleWeeks", "autoSync", "autoSyncMinutes", "calendarName", "timeZone", "tasksSync", "assignmentReminders", "hideReminderCalendar", "assignmentReminderMinutes", "assignmentNag", "assignmentNagDays", "assignmentNagHour"]),
+    await storageGet(["scheduleWeeks", "autoSync", "autoSyncMinutes", "calendarName", "timeZone", "tasksSync", "assignmentReminders", "hideReminderCalendar", "assignmentReminderMinutes", "assignmentNag", "assignmentNagDays", "assignmentNagHour", "lessonReminders", "lessonReminderMinutes", "lessonReminderScope"]),
     CONFIG
   );
 }
@@ -594,6 +596,19 @@ function syncReminders() {
 }
 
 // Ændrede indstillinger for påmindelser: hent friske afleveringer og synkronisér; uden åben Studie+-fane bruges kopien.
+// Ændrede lektionsnotifikationer kræver en ny skemasynkronisering (den skriver dem på begivenhederne). Er en
+// synkronisering allerede i gang, prøves igen lidt senere; uden Studie+-fane sker det ved næste synkronisering.
+async function applyLessonReminderSettings() {
+  const signature = lessonReminderSignature(await getSettings());
+  const { lessonRemindersApplied = "off" } = await storageGet(["lessonRemindersApplied"]);
+  if (signature === lessonRemindersApplied) return;
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const result = await syncNow(false, "manual", true);
+    if (!result.busy) return;
+    await new Promise(resolve => setTimeout(resolve, 3000));
+  }
+}
+
 async function applyReminderSettings() {
   const settings = await getSettings();
   const { remindersActive } = await storageGet(["remindersActive"]);
@@ -663,8 +678,14 @@ async function applyPlan(token, calendarId, plan, timeZone, progress) {
   const base = `/calendars/${encodeURIComponent(calendarId)}/events`;
   // Tilføj de skjulte felter, så vi kan genkende eventet næste gang
   const bodyFor = item => ({
-    ...eventBody(item.lesson, timeZone),
-    extendedProperties: { private: { [MANAGED_KEY]: item.key, [MANAGED_HASH]: contentHash(item.lesson, timeZone) } }
+    ...eventBody(item.lesson, timeZone, item.overrides ?? null),
+    // Med notifikationer slået fra nulstilles vores egne på eventet, så kalenderens standard gælder igen.
+    ...(item.reset ? { reminders: { useDefault: true } } : {}),
+    extendedProperties: { private: {
+      [MANAGED_KEY]: item.key,
+      [MANAGED_HASH]: contentHash(item.lesson, timeZone, item.overrides ?? null),
+      [MANAGED_REMINDER]: Array.isArray(item.overrides) ? "1" : "0"
+    } }
   });
   const step = async (type, request) => {
     await request();
@@ -683,6 +704,7 @@ async function applyPlan(token, calendarId, plan, timeZone, progress) {
 // `interactive` = må der vises Google-login, hvis token mangler? (false ved automatisk kørsel)
 async function performSyncNow(interactive = false, trigger = "manual", quiet = false) {
   const progress = createSyncProgress();
+  let appliedSignature = "off";
   try {
     const tab = await findStudyPlusTab();
     if (!tab) throw new StudySyncError("E301");
@@ -718,8 +740,10 @@ async function performSyncNow(interactive = false, trigger = "manual", quiet = f
       if (isSuspiciousDrop(existing.length, lessons.length)) {
         throw new StudySyncError("E502", `Studie+: ${lessons.length} lektioner, kalender: ${existing.length}.`);
       }
-      const { timeZone } = await getSettings();
-      const plan = buildPlan(lessons, existing, timeZone);
+      const { timeZone, lessonReminders, lessonReminderMinutes, lessonReminderScope } = await getSettings();
+      appliedSignature = lessonReminderSignature({ lessonReminders, lessonReminderMinutes, lessonReminderScope });
+      const reminders = lessonReminders ? { minutes: lessonReminderMinutes, scope: lessonReminderScope } : null;
+      const plan = buildPlan(lessons, existing, timeZone, reminders);
       await applyPlan(token, calendarId, plan, timeZone, progress);
       return plan;
     });
@@ -730,7 +754,7 @@ async function performSyncNow(interactive = false, trigger = "manual", quiet = f
       pageTitle: result.pageTitle
     };
     // Gem en lokal kopi af skemaet, så popup'en kan vise dagens lektioner øjeblikkeligt.
-    await storageSet({ lessonsCache: buildLessonsCache(lessons, (await getSettings()).timeZone) });
+    await storageSet({ lessonsCache: buildLessonsCache(lessons, (await getSettings()).timeZone), lessonRemindersApplied: appliedSignature });
     refreshAssignments().catch(() => {}); // afleveringer opdateres med; en fejl dér må ikke vælte kalendersynkroniseringen
     await recordSyncHistory(status, trigger);
     await sendStatus(status);
@@ -898,6 +922,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     return true;
   }
   if (message?.type === "STUDIESYNC_SETTINGS_CHANGED") {
+    applyLessonReminderSettings().catch(() => {});
     applyReminderSettings().catch(() => {}); // kører videre i baggrunden, så "Gemt" ikke venter på Google
     Promise.all([applyAlarm(), renameCalendar()]).then(() => sendResponse({ ok: true })).catch(() => sendResponse({ ok: false }));
     return true;

@@ -194,6 +194,14 @@ Under **Indstillinger → Google Tasks** kan du lægge de afleveringer, du mangl
 2. Gå til **Google Auth Platform → Dataadgang** (tidligere *OAuth-samtykkeskærm → Scopes*), tilføj scopet `https://www.googleapis.com/auth/tasks`, og gem.
 3. Står appen i *Testing*, skal hver bruger stå som testbruger. Er den udgivet, skal Google godkende scopet, fordi det er et følsomt scope.
 
+## Notifikationer for lektioner (valgfrit)
+
+Under **Indstillinger → Lektioner** kan du få en notifikation før dine lektioner. Det er slået fra som standard.
+
+- Vælg op til 5 tidspunkter før start (fra 5 minutter til 24 timer) og om det gælder **alle lektioner** eller **kun dagens første** (den med tidligst start; starter flere samtidig, får alle den).
+- Notifikationerne sættes på begivenhederne i din skemakalender, og de skrives ved en synkronisering, så en Studie+-fane skal være åben. Ændrer du indstillingen, starter udvidelsen selv en synkronisering, hvis den kan.
+- Slår du det fra, nulstilles kun de notifikationer, udvidelsen selv har sat; begivenheder, du har rettet selv, og kalenderens standardnotifikationer røres ikke.
+
 ## Påmindelser om afleveringer (valgfrit)
 
 Under **Indstillinger → Påmindelser** kan du få notifikationer om afleveringer, du mangler. Det er slået fra som standard.

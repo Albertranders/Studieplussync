@@ -110,6 +110,12 @@
     <label class="row" for="hideReminderCalendar"><span><strong>Skjul afleveringskalenderen</strong><small>Vises ikke i kalenderoversigten. Kommer notifikationerne ikke frem, så slå den fra.</small></span><input id="hideReminderCalendar" type="checkbox" class="switch" role="switch"></label>
     <p id="reminders-status" class="tasks-status" role="status" aria-live="polite" hidden></p>
   </div>
+  <h3 class="settings-heading">Lektioner</h3>
+  <div class="card">
+    <label class="row" for="lessonReminders"><span><strong>Notifikationer for lektioner</strong><small>Tilføjer en notifikation til lektionerne i din skemakalender.</small></span><input id="lessonReminders" type="checkbox" class="switch" role="switch"></label>
+    <label class="row" for="lessonReminderScope" id="lesson-scope-row"><span><strong>Hvilke lektioner</strong></span><select id="lessonReminderScope"><option value="first">Kun dagens første</option><option value="all">Alle lektioner</option></select></label>
+    <div class="row stackrow" id="lesson-options"><span class="stack"><strong>Notifikation før start</strong><small>Vælg op til 5 tidspunkter.</small></span><div id="lesson-chips" class="chips" role="group" aria-label="Notifikation før lektionen"></div></div>
+  </div>
   <h3 class="settings-heading">Udseende</h3>
   <div class="card"><label class="row" for="theme"><span><strong>Farvetema</strong><small>Automatisk følger browserens tema</small></span><select id="theme"></select></label></div>
   <button id="reset" class="link">Nulstil</button>
