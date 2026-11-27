@@ -6,12 +6,12 @@ const defaults = { maxWeeks: 12, defaultWeeks: 4, autoSyncMinutes: 30, calendarN
 
 // Cover settings defaults, validation, time-zone labels, ordering, and theme selection.
 test("configuration defaults are used when no saved settings exist", () => {
-  assert.deepEqual(resolveSettings({}, defaults), { scheduleWeeks: 4, autoSync: true, tasksSync: false, assignmentReminders: false, hideReminderCalendar: true, assignmentReminderMinutes: [4320, 1440, 120], assignmentNag: true, assignmentNagDays: 14, assignmentNagHour: 8, autoSyncMinutes: 30, timeZone: "Europe/Copenhagen", theme: "auto", calendarName: "Studie+ skema" });
+  assert.deepEqual(resolveSettings({}, defaults), { scheduleWeeks: 4, autoSync: true, tasksSync: false, lessonReminders: false, lessonReminderMinutes: [15], lessonReminderScope: "first", assignmentReminders: false, hideReminderCalendar: true, assignmentReminderMinutes: [4320, 1440, 120], assignmentNag: true, assignmentNagDays: 14, assignmentNagHour: 8, autoSyncMinutes: 30, timeZone: "Europe/Copenhagen", theme: "auto", calendarName: "Studie+ skema" });
 });
 
 test("saved choices override defaults and week counts respect maxWeeks", () => {
   const s = resolveSettings({ scheduleWeeks: 99, autoSync: false, autoSyncMinutes: 60, calendarName: "  Skole  " }, defaults);
-  assert.deepEqual(s, { scheduleWeeks: 12, autoSync: false, tasksSync: false, assignmentReminders: false, hideReminderCalendar: true, assignmentReminderMinutes: [4320, 1440, 120], assignmentNag: true, assignmentNagDays: 14, assignmentNagHour: 8, autoSyncMinutes: 60, timeZone: "Europe/Copenhagen", theme: "auto", calendarName: "Skole" });
+  assert.deepEqual(s, { scheduleWeeks: 12, autoSync: false, tasksSync: false, lessonReminders: false, lessonReminderMinutes: [15], lessonReminderScope: "first", assignmentReminders: false, hideReminderCalendar: true, assignmentReminderMinutes: [4320, 1440, 120], assignmentNag: true, assignmentNagDays: 14, assignmentNagHour: 8, autoSyncMinutes: 60, timeZone: "Europe/Copenhagen", theme: "auto", calendarName: "Skole" });
 });
 
 test("invalid saved values fall back to configuration defaults", () => {
@@ -89,4 +89,13 @@ test("indstillinger for den daglige påmindelse har grænser og standarder", () 
   assert.deepEqual([s.assignmentNag, s.assignmentNagDays, s.assignmentNagHour, s.assignmentReminderMinutes], [false, 60, 23, [60]]);
   const d = resolveSettings({ assignmentNagDays: 0, assignmentNagHour: "", }, defaults);
   assert.deepEqual([d.assignmentNagDays, d.assignmentNagHour], [1, 8]);
+});
+
+test("lesson reminder settings are validated", () => {
+  const s = resolveSettings({ lessonReminders: true, lessonReminderMinutes: [5, 60, 60, "x", 15], lessonReminderScope: "all" }, defaults);
+  assert.equal(s.lessonReminders, true);
+  assert.deepEqual(s.lessonReminderMinutes, [60, 15, 5]);
+  assert.equal(s.lessonReminderScope, "all");
+  assert.equal(resolveSettings({ lessonReminderScope: "weird", lessonReminderMinutes: [] }, defaults).lessonReminderScope, "first");
+  assert.deepEqual(resolveSettings({ lessonReminderMinutes: [] }, defaults).lessonReminderMinutes, []);
 });

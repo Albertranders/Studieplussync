@@ -8,6 +8,9 @@ export const INTERVAL_CHOICES = [15, 30, 60, 120];
 export const REMINDER_CHOICES = [15, 30, 60, 120, 360, 720, 1440, 2880, 4320, 10080];
 export const MAX_REMINDERS = 5;
 export const DEFAULT_ASSIGNMENT_REMINDERS = [4320, 1440, 120]; // 3 dage, 24 timer og 2 timer før fristen
+export const LESSON_REMINDER_CHOICES = [5, 10, 15, 30, 60, 120, 720, 1440];
+export const DEFAULT_LESSON_REMINDERS = [15];
+export const LESSON_SCOPES = ["first", "all"]; // kun dagens første lektion, eller alle
 export const NAG_DAY_CHOICES = [3, 7, 14, 30];
 export const NAG_HOUR_CHOICES = [6, 7, 8, 9, 10, 12, 15, 18, 20];
 // "Auto" follows the browser or system light/dark appearance.
@@ -95,6 +98,9 @@ export function resolveSettings(stored = {}, defaults = {}) {
     assignmentNag: stored.assignmentNag !== false, // daglig påmindelse efter en overskredet frist
     assignmentNagDays: clampInt(stored.assignmentNagDays, 1, 60, 14),
     assignmentNagHour: clampInt(stored.assignmentNagHour, 0, 23, 8),
+    lessonReminders: stored.lessonReminders === true, // notifikationer for lektioner; slået fra som standard
+    lessonReminderMinutes: normalizeReminderMinutes(stored.lessonReminderMinutes, DEFAULT_LESSON_REMINDERS),
+    lessonReminderScope: LESSON_SCOPES.includes(stored.lessonReminderScope) ? stored.lessonReminderScope : "first",
     autoSyncMinutes: minutes >= 1 ? minutes : defaultMinutes,
     timeZone,
     theme: THEME_CHOICES.some(([id]) => id === stored.theme) ? stored.theme : "auto",

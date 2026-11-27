@@ -1,5 +1,5 @@
 // Render the popup dashboard, onboarding guide, navigation menu, and settings.
-import { INTERVAL_CHOICES, MAX_REMINDERS, NAG_DAY_CHOICES, NAG_HOUR_CHOICES, REMINDER_CHOICES, THEME_CHOICES, WEEK_CHOICES, autoSyncText, reminderLabel, resolveSettings, timeZoneLabel, timeZoneOptions } from "./settings.js";
+import { INTERVAL_CHOICES, LESSON_REMINDER_CHOICES, MAX_REMINDERS, NAG_DAY_CHOICES, NAG_HOUR_CHOICES, REMINDER_CHOICES, THEME_CHOICES, WEEK_CHOICES, autoSyncText, reminderLabel, resolveSettings, timeZoneLabel, timeZoneOptions } from "./settings.js";
 import { canOpenGuide, shouldAutoOpenGuide } from "./onboarding.js";
 import { isConnected } from "./auth.js";
 import { todayLessons } from "./lessons-cache.js";
@@ -12,6 +12,7 @@ let currentGuideAction = null;
 let guidePausedForSettings = false;
 let guideFeedback = "";
 let guideFeedbackType = "neutral";
+let lessonMinutes = []; // valgte notifikationer før lektioner (minutter)
 let reminderMinutes = []; // valgte påmindelser før fristen (minutter), vist som knapper
 let tasksSyncOn = false; // gemt valg; ændres kun efter en vellykket tilladelse (se handleren nedenfor)
 const state = $("state"), detail = $("detail"), dot = $("dot"), updated = $("last-sync-value");
@@ -606,25 +607,27 @@ function applyTheme(theme) {
 }
 // Fill all settings controls from a normalized settings object.
 // Knapper til valg af, hvornår man får besked før fristen (op til MAX_REMINDERS).
-function renderReminderChips(disabled) {
-  const box = $("reminder-chips");
+function renderChips(boxId, base, selected, disabled, onChange) {
+  const box = $(boxId);
   box.replaceChildren();
-  const choices = [...new Set([...REMINDER_CHOICES, ...reminderMinutes])].sort((a, b) => a - b);
+  const choices = [...new Set([...base, ...selected])].sort((a, b) => a - b);
   for (const minutes of choices) {
-    const on = reminderMinutes.includes(minutes);
+    const on = selected.includes(minutes);
     const chip = document.createElement("button");
     chip.type = "button";
     chip.className = "chip";
     chip.textContent = reminderLabel(minutes);
     chip.setAttribute("aria-pressed", String(on));
-    chip.disabled = disabled || (!on && reminderMinutes.length >= MAX_REMINDERS);
+    chip.disabled = disabled || (!on && selected.length >= MAX_REMINDERS);
     chip.addEventListener("click", () => {
-      reminderMinutes = on ? reminderMinutes.filter(m => m !== minutes) : [...reminderMinutes, minutes];
+      onChange(on ? selected.filter(m => m !== minutes) : [...selected, minutes]);
       saveSettings();
     });
     box.append(chip);
   }
 }
+const renderReminderChips = disabled => renderChips("reminder-chips", REMINDER_CHOICES, reminderMinutes, disabled, list => { reminderMinutes = list; });
+const renderLessonChips = disabled => renderChips("lesson-chips", LESSON_REMINDER_CHOICES, lessonMinutes, disabled, list => { lessonMinutes = list; });
 const nagHourLabel = h => `${String(h).padStart(2, "0")}.00`;
 const nagDaysLabel = n => (n === 1 ? "1 dag" : `${n} dage`);
 // De øvrige valg følger kontakterne: alt er låst, når påmindelser er slået fra, og dage/tid, når den daglige er det.
@@ -637,10 +640,18 @@ function updateReminderControls(settings) {
   $("nag-hour-row").classList.toggle("disabled", !nag);
   $("reminder-options").classList.toggle("disabled", !on);
   renderReminderChips(!on);
+  const lessons = settings.lessonReminders;
+  $("lessonReminderScope").disabled = !lessons;
+  $("lesson-options").classList.toggle("disabled", !lessons);
+  $("lesson-scope-row").classList.toggle("disabled", !lessons);
+  renderLessonChips(!lessons);
 }
 function showSettings(settings) {
   fillChoices(settings);
   reminderMinutes = settings.assignmentReminderMinutes;
+  lessonMinutes = settings.lessonReminderMinutes;
+  $("lessonReminders").checked = settings.lessonReminders;
+  $("lessonReminderScope").value = settings.lessonReminderScope;
   fillSelect($("assignmentNagDays"), [...new Set([...NAG_DAY_CHOICES, settings.assignmentNagDays])].sort((a, b) => a - b), nagDaysLabel);
   fillSelect($("assignmentNagHour"), [...new Set([...NAG_HOUR_CHOICES, settings.assignmentNagHour])].sort((a, b) => a - b), nagHourLabel);
   $("assignmentNagDays").value = String(settings.assignmentNagDays);
@@ -663,7 +674,7 @@ function showSettings(settings) {
 }
 // Read, normalize, and return settings saved by the extension.
 async function loadSettings() {
-  return resolveSettings(await chrome.storage.local.get(["scheduleWeeks","autoSync","autoSyncMinutes","calendarName","timeZone","theme","tasksSync","assignmentReminders","hideReminderCalendar","assignmentReminderMinutes","assignmentNag","assignmentNagDays","assignmentNagHour"]), CONFIG);
+  return resolveSettings(await chrome.storage.local.get(["scheduleWeeks","autoSync","autoSyncMinutes","calendarName","timeZone","theme","tasksSync","assignmentReminders","hideReminderCalendar","assignmentReminderMinutes","assignmentNag","assignmentNagDays","assignmentNagHour","lessonReminders","lessonReminderMinutes","lessonReminderScope"]), CONFIG);
 }
 let savedTimer;
 // Briefly show the result of a settings save or reset.
@@ -679,6 +690,7 @@ async function saveSettings() {
     assignmentReminders:$("assignmentReminders").checked, hideReminderCalendar:$("hideReminderCalendar").checked,
     assignmentReminderMinutes:reminderMinutes, assignmentNag:$("assignmentNag").checked,
     assignmentNagDays:$("assignmentNagDays").value, assignmentNagHour:$("assignmentNagHour").value,
+    lessonReminders:$("lessonReminders").checked, lessonReminderMinutes:lessonMinutes, lessonReminderScope:$("lessonReminderScope").value,
     autoSyncMinutes:$("interval").value, calendarName:$("calendarName").value,
     timeZone:$("timeZone").value, theme:$("theme").value
   }, CONFIG);
@@ -686,9 +698,9 @@ async function saveSettings() {
   showSettings(settings); flashSaved("Gemt ✓");
   await message("STUDIESYNC_SETTINGS_CHANGED");
 }
-for (const id of ["weeks","autoSync","interval","calendarName","timeZone","theme","assignmentReminders","hideReminderCalendar","assignmentNag","assignmentNagDays","assignmentNagHour"]) $(id).addEventListener("change", saveSettings);
+for (const id of ["weeks","autoSync","interval","calendarName","timeZone","theme","assignmentReminders","hideReminderCalendar","assignmentNag","assignmentNagDays","assignmentNagHour","lessonReminders","lessonReminderScope"]) $(id).addEventListener("change", saveSettings);
 $("reset").addEventListener("click", async () => {
-  await chrome.storage.local.remove(["scheduleWeeks","autoSync","autoSyncMinutes","calendarName","timeZone","theme","tasksSync","assignmentReminders","hideReminderCalendar","assignmentReminderMinutes","assignmentNag","assignmentNagDays","assignmentNagHour"]);
+  await chrome.storage.local.remove(["scheduleWeeks","autoSync","autoSyncMinutes","calendarName","timeZone","theme","tasksSync","assignmentReminders","hideReminderCalendar","assignmentReminderMinutes","assignmentNag","assignmentNagDays","assignmentNagHour","lessonReminders","lessonReminderMinutes","lessonReminderScope"]);
   showSettings(await loadSettings()); flashSaved("Nulstillet ✓");
   await message("STUDIESYNC_SETTINGS_CHANGED");
 });
@@ -699,7 +711,7 @@ $("back").addEventListener("click", async () => {
 // Initialize settings, version, account state, dashboard, and onboarding state.
 // Alt hentes i ét kald til lageret, så popup'en kan tegnes straks uden at vente på baggrundsscriptet.
 const LOAD_KEYS = [
-  "scheduleWeeks", "autoSync", "autoSyncMinutes", "calendarName", "timeZone", "theme", "tasksSync", "tasksStatus", "assignmentReminders", "remindersStatus",
+  "scheduleWeeks", "autoSync", "autoSyncMinutes", "calendarName", "timeZone", "theme", "tasksSync", "tasksStatus", "assignmentReminders", "remindersStatus", "assignmentReminderMinutes", "hideReminderCalendar", "assignmentNag", "assignmentNagDays", "assignmentNagHour", "lessonReminders", "lessonReminderMinutes", "lessonReminderScope",
   "googleConnected", "loginHint", "webToken", "lastStatus", "lastUpdated", "lessonsCache",
   "assignmentsCache", "assignmentsError", "dashboardTab", "guideCompletedSteps", "guideCompleted", "guideAutoOpened"
 ];

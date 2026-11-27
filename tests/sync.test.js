@@ -101,3 +101,45 @@ test("legacy events storing full content as the hash are not needlessly updated"
   const existing = [{ id: "g2", extendedProperties: { private: { [MANAGED_KEY]: "2", [MANAGED_HASH]: legacy } } }];
   assert.equal(buildPlan([lesson], existing).unchanged, 1);
 });
+
+// --- Notifikationer for lektioner ---
+import { lessonOverrides, eventBody as bodyOf, contentHash as hashOf, MANAGED_REMINDER as REM } from "../src/sync.js";
+const L = (id, date, start, extra = {}) => ({ id, date, start, end: "23:00", subject: "Mat", ...extra });
+const TZ = "Europe/Copenhagen";
+
+test("lesson reminders: scope 'first' gives only the earliest lesson per day, 'all' gives every lesson", () => {
+  const lessons = [L("a", "2026-12-01", "10:00"), L("b", "2026-12-01", "08:00"), L("c", "2026-12-02", "09:00"), L("d", "2026-12-02", "09:00")];
+  const first = lessonOverrides(lessons, { minutes: [15, 5], scope: "first" });
+  assert.deepEqual([...first], [["a", []], ["b", [15, 5]], ["c", [15, 5]], ["d", [15, 5]]]);
+  const all = lessonOverrides(lessons, { minutes: [15], scope: "all" });
+  assert.ok([...all.values()].every(v => v.length === 1));
+  assert.equal(lessonOverrides(lessons, null).size, 0);
+});
+
+test("lesson reminders: the event body and fingerprint are unchanged when reminders are off", () => {
+  const lesson = L("a", "2026-12-01", "08:00");
+  assert.equal("reminders" in bodyOf(lesson, TZ), false);
+  assert.equal(hashOf(lesson, TZ), hashOf(lesson, TZ, null));
+  assert.notEqual(hashOf(lesson, TZ, [15]), hashOf(lesson, TZ));
+  assert.deepEqual(bodyOf(lesson, TZ, [15]).reminders, { useDefault: false, overrides: [{ method: "popup", minutes: 15 }] });
+  assert.deepEqual(bodyOf(lesson, TZ, []).reminders, { useDefault: false, overrides: [] });
+});
+
+test("lesson reminders: turning reminders on updates events, off resets only events we set", () => {
+  const lessons = [L("a", "2026-12-01", "08:00"), L("b", "2026-12-01", "10:00")];
+  const plain = lessons.map(l => ({ id: "E" + l.id, extendedProperties: { private: { studiesyncKey: l.id, studiesyncHash: hashOf(l, TZ) } } }));
+  const on = buildPlan(lessons, plain, TZ, { minutes: [15], scope: "first" });
+  assert.equal(on.update.length, 2);
+  assert.deepEqual(on.update.map(u => u.overrides), [[15], []]);
+  assert.ok(on.update.every(u => u.reset === false));
+  // Stabilt, når alt er anvendt
+  const applied = on.update.map(u => ({ id: u.id, extendedProperties: { private: { studiesyncKey: u.key, studiesyncHash: hashOf(u.lesson, TZ, u.overrides), [REM]: "1" } } }));
+  assert.equal(buildPlan(lessons, applied, TZ, { minutes: [15], scope: "first" }).unchanged, 2);
+  // Slået fra igen: begge nulstilles
+  const off = buildPlan(lessons, applied, TZ, null);
+  assert.equal(off.update.length, 2);
+  assert.ok(off.update.every(u => u.overrides === null && u.reset === true));
+  // En begivenhed uden vores markør nulstilles ikke
+  const foreign = [{ ...applied[0], extendedProperties: { private: { ...applied[0].extendedProperties.private, [REM]: "0" } } }];
+  assert.equal(buildPlan([lessons[0]], foreign, TZ, null).update[0].reset, false);
+});
